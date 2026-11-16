@@ -1,6 +1,7 @@
+from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import insert, update
+from sqlalchemy import CursorResult, insert, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from libs.auth.results import AuthUser
@@ -68,7 +69,7 @@ class ContentItemService:
             )
         )
         content_item_update_result = await self._db_session.execute(content_item_update)
-        if content_item_update_result.rowcount == 0:
+        if cast(CursorResult[Any], content_item_update_result).rowcount == 0:
             raise NotFoundException("Content item not found")
 
         # The publish time may have changed, so the feed score is rewritten
@@ -88,7 +89,7 @@ class ContentItemService:
         content_item_soft_delete_update_result = await self._db_session.execute(
             content_item_soft_delete_update
         )
-        if content_item_soft_delete_update_result.rowcount == 0:
+        if cast(CursorResult[Any], content_item_soft_delete_update_result).rowcount == 0:
             raise NotFoundException("Content item not found")
 
     async def _link_generate_text_run(
@@ -106,5 +107,5 @@ class ContentItemService:
         generate_text_run_link_update_result = await self._db_session.execute(
             generate_text_run_link_update
         )
-        if generate_text_run_link_update_result.rowcount == 0:
+        if cast(CursorResult[Any], generate_text_run_link_update_result).rowcount == 0:
             raise NotFoundException("Generate text run not found")

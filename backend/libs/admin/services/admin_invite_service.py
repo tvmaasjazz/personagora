@@ -1,7 +1,8 @@
 from datetime import timedelta
+from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import CursorResult, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -132,7 +133,7 @@ class AdminInviteService:
             )
         )
         invite_revoke_update_result = await self._db_session.execute(invite_revoke_update)
-        if invite_revoke_update_result.rowcount == 1:
+        if cast(CursorResult[Any], invite_revoke_update_result).rowcount == 1:
             return
 
         # Nothing changed: tell an unknown or used invite from one already revoked

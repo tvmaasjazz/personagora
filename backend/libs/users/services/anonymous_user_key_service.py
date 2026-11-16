@@ -2,6 +2,7 @@ import hmac
 import secrets
 from datetime import UTC, datetime, time, timedelta
 from hashlib import sha256
+from typing import cast
 
 from redis.asyncio import Redis
 
@@ -43,4 +44,4 @@ class AnonymousUserKeyService:
             return new_salt
         if isinstance(existing_salt, bytes):
             return existing_salt.decode()
-        return existing_salt
+        return cast(str, existing_salt)

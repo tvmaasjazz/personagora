@@ -72,7 +72,7 @@ class MarkdownUtils:
         title = title_token.content.strip() or None
 
         heading_open_token = tokens[0]
-        body_start_line = heading_open_token.map[1]
+        body_start_line = heading_open_token.map[1]  # ty: ignore[not-subscriptable]
 
         # Take the paragraph after the title as the subtitle when it is one italic span
         subtitle = None
@@ -85,7 +85,7 @@ class MarkdownUtils:
             inline_token = tokens[SUBTITLE_PARAGRAPH_INLINE_TOKEN_INDEX]
             subtitle = MarkdownUtils._find_italic_only_text(inline_token)
             if subtitle is not None:
-                body_start_line = paragraph_open_token.map[1]
+                body_start_line = paragraph_open_token.map[1]  # ty: ignore[not-subscriptable]
 
         # Slice the body by source line, so its formatting is untouched
         lines = markdown_text.splitlines()

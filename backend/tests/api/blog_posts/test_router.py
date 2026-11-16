@@ -74,10 +74,12 @@ async def test_create_blog_post_returns_identity_and_persists_rows(
     response_body = create_blog_post_response.json()
     blog_post_query = select(BlogPostOrm).where(BlogPostOrm.identity == response_body["identity"])
     blog_post_record = await db_session.scalar(blog_post_query)
+    assert blog_post_record is not None
     content_item_query = select(ContentItemOrm).where(
         ContentItemOrm.id == blog_post_record.content_item_id
     )
     content_item_record = await db_session.scalar(content_item_query)
+    assert content_item_record is not None
     assert create_blog_post_response.status_code == 201
     assert response_body == {"identity": str(blog_post_record.identity)}
     assert blog_post_record.title == "Why Slow Mornings Make Better Writers"
@@ -254,8 +256,10 @@ async def test_create_blog_post_from_generate_text_run_returns_identity_and_pers
         BlogPostOrm.identity == UUID(response_body["identity"])
     )
     blog_post_record = await db_session.scalar(blog_post_query)
+    assert blog_post_record is not None
     run_query = select(GenerateTextRunOrm).where(GenerateTextRunOrm.identity == UUID(run_identity))
     run_record = await db_session.scalar(run_query)
+    assert run_record is not None
     assert create_blog_post_response.status_code == 201
     assert response_body == {"identity": str(blog_post_record.identity)}
     assert run_record.content_item_id == blog_post_record.content_item_id
@@ -263,6 +267,7 @@ async def test_create_blog_post_from_generate_text_run_returns_identity_and_pers
         ContentItemOrm.id == blog_post_record.content_item_id
     )
     content_item_record = await db_session.scalar(content_item_query)
+    assert content_item_record is not None
 
     find_blog_post_response = await api_client.get(f"/blog-posts/{blog_post_record.identity}")
 

@@ -15,7 +15,8 @@ from libs.llm.inputs import LlmCompletionInput
 from libs.llm.services import LlmService
 from libs.llm.types import LlmType
 
-GenerateTextNode = Callable[[GenerateTextState], Awaitable[dict[str, Any]]]
+# Callable[..., ...] because LangGraph's node protocol calls state by keyword
+GenerateTextNode = Callable[..., Awaitable[dict[str, Any]]]
 
 OUTPUT_FORMAT_PROBLEMS_USER_PROMPT_TEMPLATE = (
     "{user_prompt}\n\n"

@@ -56,6 +56,7 @@ async def test_create_persona_persists_row(
 
     persona_query = select(PersonaOrm).where(PersonaOrm.identity == create_persona_result.identity)
     persona_record = await db_session.scalar(persona_query)
+    assert persona_record is not None
     assert create_persona_result == CreatePersonaResult(identity=persona_record.identity)
     assert persona_record is not None
     assert persona_record.name == "Ada the Essayist"

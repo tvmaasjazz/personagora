@@ -53,6 +53,7 @@ def test_create_app_every_route_requires_a_permission_or_is_open(
     unguarded_routes = set()
     open_routes_found = set()
     for route_context in _find_api_route_contexts(fastapi_app):
+        assert route_context.methods is not None
         for method in route_context.methods:
             route_key = (method, route_context.path)
             if route_key in OPEN_ROUTES:
@@ -148,7 +149,7 @@ def test_create_app_route_requires_exactly_its_permission(
     matching_routes = [
         route_context
         for route_context in _find_api_route_contexts(fastapi_app)
-        if route_context.path == path and method in route_context.methods
+        if route_context.path == path and method in (route_context.methods or set())
     ]
 
     assert len(matching_routes) == 1

@@ -5,7 +5,7 @@ from libs.personas.types import UserPersonaSortType
 
 
 class FindUserPersonaPageInput(BasePageInput):
-    sort_by: UserPersonaSortType
+    sort_by: UserPersonaSortType  # ty: ignore[incompatible-mutable-override]
 
 
 class PersonaInput(BaseModel):

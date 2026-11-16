@@ -1,7 +1,8 @@
 from decimal import Decimal
+from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import CursorResult, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from libs.core.exceptions import ForbiddenException, NotFoundException
@@ -78,7 +79,7 @@ class UserService:
             )
         )
         user_role_update_result = await self._db_session.execute(user_role_update)
-        return user_role_update_result.rowcount == 1
+        return cast(CursorResult[Any], user_role_update_result).rowcount == 1
 
     async def _find_user_from_auth_provider(
         self,

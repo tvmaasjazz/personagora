@@ -26,11 +26,11 @@ class ContentItemSortType(StrEnum):
 
 
 class ContentItemPageInput(BasePageInput):
-    sort_by: ContentItemSortType = ContentItemSortType.CREATED
+    sort_by: ContentItemSortType = ContentItemSortType.CREATED  # ty: ignore[incompatible-mutable-override]
 
 
 class UserPageInput(BasePageInput):
-    sort_by: UserSortType = UserSortType.EMAIL
+    sort_by: UserSortType = UserSortType.EMAIL  # ty: ignore[incompatible-mutable-override]
 
 
 USER_PAGINATION_CONFIG = PaginationConfig(

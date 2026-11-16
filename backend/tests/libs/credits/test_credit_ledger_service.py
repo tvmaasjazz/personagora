@@ -360,6 +360,7 @@ async def test_grant_credits_returns_identity_of_new_ledger_row(
         CreditLedgerOrm.user_id == user_record.id
     )
     grant_identity = await db_session.scalar(grant_identity_query)
+    assert grant_identity is not None
     assert grant_credits_result == GrantCreditsResult(identity=grant_identity)
 
 

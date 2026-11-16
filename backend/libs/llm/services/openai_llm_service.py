@@ -1,8 +1,10 @@
 import asyncio
 from collections.abc import Awaitable, Callable
+from typing import cast
 
 import structlog
 from openai import AsyncOpenAI, OpenAIError
+from openai.types.responses import Response
 from pydantic import BaseModel
 
 from libs.llm.inputs import LlmProviderCompletionInput
@@ -28,15 +30,16 @@ class OpenAiLlmService(BaseLlmProviderService):
         raw_response = await self._send_with_retries(
             lambda: self._openai_client.responses.with_raw_response.create(
                 model=provider_input.model_name,
-                **OpenAiLlmUtils.build_instructions_kwargs(provider_input),
-                **OpenAiLlmUtils.build_reasoning_kwargs(provider_input),
+                instructions=OpenAiLlmUtils.build_instructions(provider_input),
+                reasoning=OpenAiLlmUtils.build_reasoning(provider_input),
                 input=provider_input.user_prompt,
                 max_output_tokens=provider_input.max_output_tokens,
                 timeout=provider_input.request_timeout_seconds,
             )
         )
 
-        response = raw_response.parse()
+        # The raw-response wrapper loses create()'s overloads; without stream=True it's a Response
+        response = cast(Response, raw_response.parse())
         return OpenAiLlmUtils.build_provider_completion_result(
             response, raw_response.request_id, None
         )
@@ -48,8 +51,8 @@ class OpenAiLlmService(BaseLlmProviderService):
         raw_response = await self._send_with_retries(
             lambda: self._openai_client.responses.with_raw_response.parse(
                 model=provider_input.model_name,
-                **OpenAiLlmUtils.build_instructions_kwargs(provider_input),
-                **OpenAiLlmUtils.build_reasoning_kwargs(provider_input),
+                instructions=OpenAiLlmUtils.build_instructions(provider_input),
+                reasoning=OpenAiLlmUtils.build_reasoning(provider_input),
                 input=provider_input.user_prompt,
                 max_output_tokens=provider_input.max_output_tokens,
                 timeout=provider_input.request_timeout_seconds,

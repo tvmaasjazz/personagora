@@ -22,7 +22,7 @@ class UserSortType(StrEnum):
 
 
 class UserPageInput(BasePageInput):
-    sort_by: UserSortType = UserSortType.EMAIL
+    sort_by: UserSortType = UserSortType.EMAIL  # ty: ignore[incompatible-mutable-override]
     email: str | None = None
     emails: list[str] | None = None
     min_credit_balance_usd: Decimal | None = None

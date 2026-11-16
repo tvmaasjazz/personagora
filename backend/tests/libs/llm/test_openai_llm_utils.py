@@ -10,9 +10,11 @@ from openai import (
     OpenAIError,
     PermissionDeniedError,
     RateLimitError,
+    omit,
 )
 
 from libs.llm.exceptions import (
+    LlmException,
     LlmFailedException,
     LlmRateLimitedException,
     LlmUnavailableException,
@@ -28,15 +30,15 @@ def _build_status_error(
     error_class: type[APIStatusError], status_code: int, message: str = "provider said no"
 ) -> APIStatusError:
     openai_response = httpx.Response(status_code, request=_OPENAI_REQUEST)
-    return error_class(message, response=openai_response, body=None)
+    return error_class(message, response=openai_response, body=None)  # ty: ignore[invalid-argument-type]
 
 
-def test_build_reasoning_kwargs_no_effort_returns_empty_dict() -> None:
+def test_build_reasoning_no_effort_returns_omit() -> None:
     provider_input = build_llm_provider_completion_input(reasoning_effort=None)
 
-    reasoning_kwargs = OpenAiLlmUtils.build_reasoning_kwargs(provider_input)
+    reasoning = OpenAiLlmUtils.build_reasoning(provider_input)
 
-    assert reasoning_kwargs == {}
+    assert reasoning is omit
 
 
 @pytest.mark.parametrize(
@@ -48,25 +50,26 @@ def test_build_reasoning_kwargs_no_effort_returns_empty_dict() -> None:
         pytest.param(LlmReasoningEffortType.HIGH, "high", id="high"),
     ],
 )
-def test_build_reasoning_kwargs_effort_returns_openai_effort(
+def test_build_reasoning_effort_returns_openai_effort(
     reasoning_effort: LlmReasoningEffortType, expected_effort: str
 ) -> None:
     provider_input = build_llm_provider_completion_input(reasoning_effort=reasoning_effort)
 
-    reasoning_kwargs = OpenAiLlmUtils.build_reasoning_kwargs(provider_input)
+    reasoning = OpenAiLlmUtils.build_reasoning(provider_input)
 
-    assert reasoning_kwargs == {"reasoning": {"effort": expected_effort}}
+    assert reasoning == {"effort": expected_effort}
 
 
 @pytest.mark.parametrize("reasoning_effort", list(LlmReasoningEffortType))
-def test_build_reasoning_kwargs_every_effort_has_an_openai_value(
+def test_build_reasoning_every_effort_has_an_openai_value(
     reasoning_effort: LlmReasoningEffortType,
 ) -> None:
     provider_input = build_llm_provider_completion_input(reasoning_effort=reasoning_effort)
 
-    reasoning_kwargs = OpenAiLlmUtils.build_reasoning_kwargs(provider_input)
+    reasoning = OpenAiLlmUtils.build_reasoning(provider_input)
 
-    assert reasoning_kwargs["reasoning"]["effort"] in {"minimal", "low", "medium", "high"}
+    assert isinstance(reasoning, dict)
+    assert reasoning["effort"] in {"minimal", "low", "medium", "high"}
 
 
 @pytest.mark.parametrize(
@@ -74,8 +77,8 @@ def test_build_reasoning_kwargs_every_effort_has_an_openai_value(
     [
         pytest.param(_build_status_error(RateLimitError, 429), True, id="rate_limit"),
         pytest.param(_build_status_error(InternalServerError, 500), True, id="internal_server"),
-        pytest.param(APIConnectionError(request=_OPENAI_REQUEST), True, id="connection"),
-        pytest.param(APITimeoutError(request=_OPENAI_REQUEST), False, id="timeout"),
+        pytest.param(APIConnectionError(request=_OPENAI_REQUEST), True, id="connection"),  # ty: ignore[invalid-argument-type]
+        pytest.param(APITimeoutError(request=_OPENAI_REQUEST), False, id="timeout"),  # ty: ignore[invalid-argument-type]
         pytest.param(_build_status_error(BadRequestError, 400), False, id="bad_request"),
         pytest.param(_build_status_error(AuthenticationError, 401), False, id="authentication"),
         pytest.param(_build_status_error(PermissionDeniedError, 403), False, id="permission"),
@@ -128,10 +131,14 @@ def test_compute_retry_delay_seconds_uses_the_range_below_the_bound() -> None:
             _build_status_error(RateLimitError, 429), LlmRateLimitedException, id="rate_limit"
         ),
         pytest.param(
-            APIConnectionError(request=_OPENAI_REQUEST), LlmUnavailableException, id="connection"
+            APIConnectionError(request=_OPENAI_REQUEST),  # ty: ignore[invalid-argument-type]
+            LlmUnavailableException,
+            id="connection",
         ),
         pytest.param(
-            APITimeoutError(request=_OPENAI_REQUEST), LlmUnavailableException, id="timeout"
+            APITimeoutError(request=_OPENAI_REQUEST),  # ty: ignore[invalid-argument-type]
+            LlmUnavailableException,
+            id="timeout",
         ),
         pytest.param(
             _build_status_error(AuthenticationError, 401),
@@ -153,7 +160,7 @@ def test_compute_retry_delay_seconds_uses_the_range_below_the_bound() -> None:
     ],
 )
 def test_map_openai_error_returns_mapped_exception_carrying_provider_message(
-    openai_error: OpenAIError, expected_exception: type[Exception]
+    openai_error: OpenAIError, expected_exception: type[LlmException]
 ) -> None:
     mapped_exception = OpenAiLlmUtils.map_openai_error(openai_error)
 

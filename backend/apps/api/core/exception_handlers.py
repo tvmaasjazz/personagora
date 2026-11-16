@@ -38,9 +38,7 @@ def build_exception_handler(
     return handle_exception
 
 
-async def handle_unauthorized_exception(
-    request: Request, exception: UnauthorizedException
-) -> JSONResponse:
+async def handle_unauthorized_exception(request: Request, exception: Exception) -> JSONResponse:
     """Answers 401 and deletes the session cookie, so a stale one stops being sent."""
     json_response = JSONResponse(status_code=401, content={"detail": str(exception)})
     json_response.delete_cookie(SESSION_COOKIE_NAME, path="/")

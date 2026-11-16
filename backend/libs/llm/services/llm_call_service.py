@@ -1,8 +1,8 @@
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 import structlog
-from sqlalchemy import insert, update
+from sqlalchemy import CursorResult, insert, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from libs.auth.results import AuthUser
@@ -93,7 +93,7 @@ class LlmCallService:
                 )
             )
             llm_call_completion_update_result = await db_session.execute(llm_call_completion_update)
-            if llm_call_completion_update_result.rowcount == 0:
+            if cast(CursorResult[Any], llm_call_completion_update_result).rowcount == 0:
                 raise NotFoundException(f"LLM call {llm_call_id} not found")
 
     async def fail_llm_call(
@@ -132,6 +132,6 @@ class LlmCallService:
                 )
             )
             llm_call_failure_update_result = await db_session.execute(llm_call_failure_update)
-            if llm_call_failure_update_result.rowcount == 0:
+            if cast(CursorResult[Any], llm_call_failure_update_result).rowcount == 0:
                 # Warn instead of raising, so the provider error still propagates
                 logger.warning("llm_call_row_missing", llm_call_id=llm_call_id)

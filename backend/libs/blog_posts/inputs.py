@@ -8,12 +8,12 @@ from libs.core.inputs import BasePageInput
 
 
 class FindUserBlogPostPageInput(BasePageInput):
-    sort_by: UserBlogPostSortType
+    sort_by: UserBlogPostSortType  # ty: ignore[incompatible-mutable-override]
     persona_identity: UUID | None
 
 
 class FindPublicBlogPostPageInput(BasePageInput):
-    sort_by: PublicBlogPostSortType
+    sort_by: PublicBlogPostSortType  # ty: ignore[incompatible-mutable-override]
     persona_identity: UUID | None
 
 

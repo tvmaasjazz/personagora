@@ -1,6 +1,7 @@
 from decimal import Decimal
+from typing import Any, cast
 
-from sqlalchemy import exists, insert, select, update
+from sqlalchemy import CursorResult, exists, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -146,5 +147,5 @@ class CreditLedgerService:
             .values(credit_balance_usd=UserOrm.credit_balance_usd + amount_usd)
         )
         credit_balance_update_result = await self._db_session.execute(credit_balance_update)
-        if credit_balance_update_result.rowcount == 0:
+        if cast(CursorResult[Any], credit_balance_update_result).rowcount == 0:
             raise NotFoundException(f"User {user_id} not found")

@@ -86,6 +86,7 @@ async def test_record_content_item_view_signed_out_returns_200_and_records_view_
     assert record_content_item_view_response.status_code == 200
     assert record_content_item_view_response.json() == {}
     assert view_rows == [(50, ANY, None)]
+    assert view_rows[0][1] is not None
     assert len(view_rows[0][1]) == 64
     assert engagement_row == (1, 50)
 

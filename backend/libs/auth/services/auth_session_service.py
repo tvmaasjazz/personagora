@@ -1,4 +1,5 @@
 import secrets
+from typing import cast
 
 from pydantic import ValidationError
 from redis.asyncio import Redis
@@ -62,6 +63,7 @@ class AuthSessionService:
         session_ids = await self._redis_client.smembers(user_session_list_key)
         # The client returns bytes, so each id is decoded before it's built into a key
         session_keys = [
-            f"{USER_SESSION_KEY_PREFIX}{session_id.decode()}" for session_id in session_ids
+            f"{USER_SESSION_KEY_PREFIX}{session_id.decode()}"
+            for session_id in cast(set[bytes], session_ids)
         ]
         await self._redis_client.delete(user_session_list_key, *session_keys)

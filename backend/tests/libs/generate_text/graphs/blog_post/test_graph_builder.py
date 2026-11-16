@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -100,7 +101,7 @@ async def test_build_graph_all_steps_auto_approved_runs_to_end(
     blog_post_graph = blog_post_graph_builder.build_graph(
         options.model_dump(mode="json"), InMemorySaver()
     )
-    graph_run_config = {"configurable": {"thread_id": str(uuid4())}}
+    graph_run_config: RunnableConfig = {"configurable": {"thread_id": str(uuid4())}}
 
     await blog_post_graph.ainvoke(generate_text_state, graph_run_config)
 
@@ -135,7 +136,7 @@ async def test_build_graph_step_not_auto_approved_pauses_at_review(
     blog_post_graph = blog_post_graph_builder.build_graph(
         options.model_dump(mode="json"), InMemorySaver()
     )
-    graph_run_config = {"configurable": {"thread_id": str(uuid4())}}
+    graph_run_config: RunnableConfig = {"configurable": {"thread_id": str(uuid4())}}
 
     await blog_post_graph.ainvoke(generate_text_state, graph_run_config)
 
@@ -158,7 +159,7 @@ async def test_build_graph_rejection_routes_to_rewrite_and_pauses_again(
     blog_post_graph = blog_post_graph_builder.build_graph(
         options.model_dump(mode="json"), InMemorySaver()
     )
-    graph_run_config = {"configurable": {"thread_id": str(uuid4())}}
+    graph_run_config: RunnableConfig = {"configurable": {"thread_id": str(uuid4())}}
     await blog_post_graph.ainvoke(generate_text_state, graph_run_config)
 
     llm_service_stub.complete_result = build_llm_completion_result(
@@ -190,7 +191,7 @@ async def test_build_graph_max_rewrite_passes_ends_run_instead_of_looping(
     blog_post_graph = blog_post_graph_builder.build_graph(
         options.model_dump(mode="json"), InMemorySaver()
     )
-    graph_run_config = {"configurable": {"thread_id": str(uuid4())}}
+    graph_run_config: RunnableConfig = {"configurable": {"thread_id": str(uuid4())}}
     await blog_post_graph.ainvoke(generate_text_state, graph_run_config)
     retry_command = Command(resume={"is_approved": False, "feedback_text": "Try again."})
     await blog_post_graph.ainvoke(retry_command, graph_run_config)

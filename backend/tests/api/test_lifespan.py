@@ -1,9 +1,11 @@
 import os
 import re
+from typing import cast
 
 from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from apps.api.app_factory import create_app
 from apps.api.core.config import AppSettings
@@ -37,7 +39,7 @@ async def test_lifespan_disposes_db_engine_on_shutdown() -> None:
         async with db_engine.connect() as db_connection:
             await db_connection.execute(text("SELECT 1"))
 
-    assert db_engine.pool.checkedin() == 0
+    assert cast(QueuePool, db_engine.pool).checkedin() == 0
 
 
 async def test_lifespan_closes_redis_client_on_shutdown() -> None:

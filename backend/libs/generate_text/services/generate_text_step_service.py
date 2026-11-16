@@ -1,6 +1,7 @@
 from decimal import Decimal
+from typing import Any, cast
 
-from sqlalchemy import func, insert, null, select, update
+from sqlalchemy import CursorResult, func, insert, null, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from libs.auth.results import AuthUser
@@ -147,7 +148,7 @@ class GenerateTextStepService:
                 )
             )
             step_completion_update_result = await db_session.execute(step_completion_update)
-            if step_completion_update_result.rowcount == 0:
+            if cast(CursorResult[Any], step_completion_update_result).rowcount == 0:
                 return
 
             # Charge the user for the step in the same transaction, so a charge never
@@ -176,7 +177,7 @@ class GenerateTextStepService:
         )
         async with self._db_session_factory() as db_session, db_session.begin():
             step_failure_update_result = await db_session.execute(step_failure_update)
-            if step_failure_update_result.rowcount == 0:
+            if cast(CursorResult[Any], step_failure_update_result).rowcount == 0:
                 await self._raise_if_step_missing(db_session, step_id)
 
     async def record_decision(
@@ -200,7 +201,7 @@ class GenerateTextStepService:
         )
         async with self._db_session_factory() as db_session, db_session.begin():
             step_decision_update_result = await db_session.execute(step_decision_update)
-            if step_decision_update_result.rowcount == 0:
+            if cast(CursorResult[Any], step_decision_update_result).rowcount == 0:
                 raise NotFoundException(f"Generate text step {step_id} not found")
 
     async def find_awaiting_review_step_id(self, run_id: int) -> int | None:
@@ -280,7 +281,7 @@ class GenerateTextStepService:
         )
         async with self._db_session_factory() as db_session, db_session.begin():
             step_pause_update_result = await db_session.execute(step_pause_update)
-            if step_pause_update_result.rowcount == 0:
+            if cast(CursorResult[Any], step_pause_update_result).rowcount == 0:
                 await self._raise_if_step_missing(db_session, step_id)
 
     async def _find_llm_call_rollup(

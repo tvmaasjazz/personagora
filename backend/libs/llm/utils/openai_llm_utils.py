@@ -6,11 +6,14 @@ from openai import (
     APITimeoutError,
     AuthenticationError,
     InternalServerError,
+    Omit,
     OpenAIError,
     PermissionDeniedError,
     RateLimitError,
+    omit,
 )
 from openai.types.responses import Response
+from openai.types.shared_params import Reasoning, ReasoningEffort
 from pydantic import BaseModel
 
 from libs.llm.exceptions import (
@@ -23,7 +26,7 @@ from libs.llm.results import LlmProviderCompletionResult
 from libs.llm.types import LlmCallReasonType, LlmReasoningEffortType
 
 # OpenAI's spelling of each reasoning effort, for the Responses API's reasoning.effort.
-OPENAI_REASONING_EFFORT_BY_TYPE: dict[LlmReasoningEffortType, str] = {
+OPENAI_REASONING_EFFORT_BY_TYPE: dict[LlmReasoningEffortType, ReasoningEffort] = {
     LlmReasoningEffortType.MINIMAL: "minimal",
     LlmReasoningEffortType.LOW: "low",
     LlmReasoningEffortType.MEDIUM: "medium",
@@ -35,19 +38,17 @@ class OpenAiLlmUtils:
     """Builds OpenAI request arguments and maps OpenAI responses and errors to ours."""
 
     @staticmethod
-    def build_instructions_kwargs(provider_input: LlmProviderCompletionInput) -> dict[str, str]:
-        """The instructions argument, left out when there is no system prompt."""
+    def build_instructions(provider_input: LlmProviderCompletionInput) -> str | Omit:
+        """The instructions argument, omitted when there is no system prompt."""
         if provider_input.system_prompt is None:
-            return {}
-        return {"instructions": provider_input.system_prompt}
+            return omit
+        return provider_input.system_prompt
 
     @staticmethod
-    def build_reasoning_kwargs(
-        provider_input: LlmProviderCompletionInput,
-    ) -> dict[str, dict[str, str]]:
-        """The reasoning argument, left out when no effort is set."""
+    def build_reasoning(provider_input: LlmProviderCompletionInput) -> Reasoning | Omit:
+        """The reasoning argument, omitted when no effort is set."""
         if provider_input.reasoning_effort is None:
-            return {}
+            return omit
         openai_reasoning_effort = OPENAI_REASONING_EFFORT_BY_TYPE.get(
             provider_input.reasoning_effort
         )
@@ -55,7 +56,7 @@ class OpenAiLlmUtils:
             raise NotImplementedError(
                 f"No OpenAI reasoning effort for {provider_input.reasoning_effort}"
             )
-        return {"reasoning": {"effort": openai_reasoning_effort}}
+        return {"effort": openai_reasoning_effort}
 
     @staticmethod
     def is_retryable_error(openai_error: OpenAIError) -> bool:

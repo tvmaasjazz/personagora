@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -64,7 +64,7 @@ class GenerateTextRunLeaseService:
             logger.warning("run_handoff_send_failed", run_id=run_id, exc_info=True)
 
     @asynccontextmanager
-    async def keep_lease_alive(self, run_id: int) -> AsyncIterator[None]:
+    async def keep_lease_alive(self, run_id: int) -> AsyncGenerator[None]:
         """Renews the run's lease while the block runs, handing the run off if cancelled."""
         job_task = asyncio.current_task()
         heartbeat_task = asyncio.create_task(self._renew_lease_until_lost(run_id, job_task))

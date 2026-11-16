@@ -1,4 +1,6 @@
-from sqlalchemy import ColumnElement, insert, literal, select, update
+from typing import Any, cast
+
+from sqlalchemy import ColumnElement, CursorResult, insert, literal, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from libs.content_engagement.settings import ContentEngagementSettings
@@ -106,7 +108,7 @@ class ContentEngagementService:
         rescore_all_update_result = await self._db_session.execute(
             content_item_engagement_rescore_all_update
         )
-        return rescore_all_update_result.rowcount
+        return cast(CursorResult[Any], rescore_all_update_result).rowcount
 
     def _build_system_user_id_sql(self) -> ColumnElement[int]:
         return select(UserOrm.id).where(UserOrm.is_system_user).scalar_subquery()
