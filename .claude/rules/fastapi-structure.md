@@ -169,6 +169,20 @@ of calls to a paid API, takes the session factory and commits each write in its 
 short transaction. The pattern is `libs/llm/services/llm_call_service.py`. Never hold one of those sessions open across a slow call: open,
 write, commit, close.
 
+## Lib READMEs
+
+A lib whose feature runs across several services or processes has a `README.md` in its
+root, written when the feature is built. Libs with one service don't. The pattern is
+`libs/credits/README.md`.
+
+It's informational and fits on a screen. In order: what the feature does; how it
+works, as numbered steps from request to result; its services, one line each on what
+they own; and its states, if it has any. It points to code and never pastes it. It
+leaves out the reasons for decisions, history, conventions (the rules own those), and
+anything one file's code already shows.
+
+The change that makes a README untrue updates it in the same PR.
+
 ## Layer rules
 
 - **`libs/` has no FastAPI dependency.** `Request` or `Depends` anywhere under `libs/`
