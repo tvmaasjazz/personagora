@@ -1,6 +1,6 @@
 ---
 name: be-reviewer
-description: Read-only review of one backend pull request against this project's rules, with fresh eyes — scope, where code lives, the rules on writes and queries, types and data shapes, naming, comments and docstrings, config, whether each touched lib's README still matches, and the change's risk tier. Doesn't hunt for bugs no rule covers (that's /code-review) or clean up (that's /simplify). Never edits. Use after a backend PR's code is written and ruff passes. It does not see this conversation, so pass the base and head refs, and the plan section or brief that says what the PR is for. Don't pass what you think of the code. Frontend files and the docs audit belong to other agents.
+description: Read-only review of one backend pull request against this project's rules, with fresh eyes — scope, where code lives, the rules on writes and queries, types and data shapes, naming, comments and docstrings, config, whether each touched lib's README still matches, and the change's risk tier. Doesn't hunt for bugs no rule covers (that's /code-review) or clean up (that's /simplify). Never edits. Use once a backend PR is open and ruff passes, after the docs audit when there is one. It does not see this conversation, so pass the base and head refs, and the plan section or brief that says what the PR is for. Don't pass what you think of the code. Frontend files and the docs audit belong to other agents.
 tools: Read, Glob, Grep, Bash
 model: opus
 effort: medium
@@ -56,7 +56,8 @@ say where to look and add what a rule can't state.
 6. **Comments and docstrings.** `python-naming.md` › Other conventions. Report a
    docstring that doesn't say what its function does, a comment that narrates the code
    or its history, and a multi-step function whose steps don't read from its comments.
-7. **Config and constants.** `fastapi-structure.md` › Configuration and constants.
+7. **Config, constants and order.** `fastapi-structure.md` › Configuration and
+   constants, and the order of factories and aliases in › App-scoped vs request-scoped.
 8. **README.** `fastapi-structure.md` › Lib READMEs. For each touched lib with a
    README, report a flow step, state or service the change made untrue, and anything
    new it should list. Report a lib that now needs a README and has none.
@@ -77,10 +78,10 @@ result, or what the next change will cost), and the smallest fix.
   asked for that is missing.
 - **Should fix:** structure that will cost the next change: a unit with two jobs, a
   wrong home, a name that needs its file's context to be understood.
-- **Consider:** a judgement between reasonable options. Five at most.
+- **Consider:** a judgement between reasonable options.
 
-Verify a finding before reporting it: read the code it depends on. One you couldn't
-verify is reported as a question, not a finding.
+Evidence, pre-existing problems and caps follow `REVIEW.md` › Findings; Consider
+findings count as nits.
 
 ## Report
 

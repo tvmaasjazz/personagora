@@ -21,7 +21,7 @@ is on the page, not what was intended.
 3. Get the change: `git diff --stat <base>...<head>`, then
    `git diff <base>...<head> -- frontend/`.
 4. Read every changed file under `frontend/src/` in full, not only its diff, except
-   `components/ui/` and `lib/api-schema.gen.ts`. Read the files a changed file imports
+   what `REVIEW.md` lists as generated or vendored. Read the files a changed file imports
    from `features/`, `components/` and `lib/` when a finding depends on them.
 5. For each backend route the change calls, read its path and types in
    `frontend/src/lib/api-schema.gen.ts`.
@@ -84,10 +84,10 @@ what the user sees, or what the next change will cost), and the smallest fix.
   failure, or work the brief asked for that is missing.
 - **Should fix:** structure that will cost the next change: a unit with two jobs,
   layers mixed, duplication, a wrong home.
-- **Consider:** a judgement between reasonable options. Five at most.
+- **Consider:** a judgement between reasonable options.
 
-Verify a finding before reporting it: read the code it depends on. One you couldn't
-verify is reported as a question, not a finding.
+Evidence, pre-existing problems and caps follow `REVIEW.md` › Findings; Consider
+findings count as nits.
 
 ## Report
 

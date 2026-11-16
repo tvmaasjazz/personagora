@@ -119,9 +119,8 @@ commands that ran, what they returned, and for a flow, the e2e script's output.
   opening the PR. It fixes what they find, or answers a finding in the PR description.
   The GitHub Action and the managed Code Review product are for teams; revisit them only
   if PRs start coming from somewhere other than a local session.
-- **Security review** with `/security-review`, on any change touching `libs/auth`,
-  `libs/google_auth`, `libs/users`, `libs/credits`, `libs/invites`, cookies or sessions,
-  CORS, or the client-IP handling.
+- **Security review** with `/security-review`, on every change `REVIEW.md` › Risk makes
+  High.
 - **Every finding gets an answer**: fix it, or reply with the reason. Tyler already
   does this.
 - **CI gap:** the frontend job runs `fmt:check`, `lint` and `build` but not
@@ -143,7 +142,7 @@ why, so Tyler can see the reasoning and the list can grow from it.
 | ------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Low    | Plans and docs, tests only, copy, frontend styling                                                             | The reviewer's summary, then merges                                                                         |
 | Medium | Ordinary features                                                                                              | The placement list (already approved before coding), the reviewers' findings, and spot-reads                |
-| High   | SQL migrations; auth, sessions, invites, roles; credits and the ledger; lease, pickup and run-status code; CI workflows, `.railway/`, Dockerfiles; settings defaults that reach production | Every line, after the reviewers have run                                                                    |
+| High   | The paths `REVIEW.md` › Risk lists, and any change a reviewer raises                                          | Every line, after the reviewers have run                                                                    |
 
 ### 4. Making review converge
 
@@ -221,7 +220,7 @@ with the LaunchDarkly plan. Nothing new is needed here yet.
 
 **Phase 1: cheap, local, this week**
 
-1. `REVIEW.md` at the repo root, under 40 lines. It says what failure looks like here
+1. `REVIEW.md` at the repo root, kept to a screen. It says what failure looks like here
    (correctness: a write without its guard, lock or transaction; structure: a
    responsibility in the wrong service), lists the high-risk paths, caps nits, lists
    paths to skip (`api-schema.gen.ts`, `components/ui/`, lockfiles), asks for

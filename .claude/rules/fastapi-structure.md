@@ -171,9 +171,11 @@ write, commit, close.
 
 ## Lib READMEs
 
-A lib whose feature runs across several services or processes has a `README.md` in its
-root, written when the feature is built. Libs with one service don't. The pattern is
-`libs/credits/README.md`.
+A lib whose workings run across several services, processes or folders has a
+`README.md` in its root, written when the feature is built. Examples are
+`generate_text`'s background runs, and `database` with `migrations/` and
+`scripts/db/`. A lib whose one service tells the whole story doesn't get one. The
+pattern is `libs/credits/README.md`.
 
 It's informational and fits on a screen. In order: what the feature does; how it
 works, as numbered steps from request to result; its services, one line each on what

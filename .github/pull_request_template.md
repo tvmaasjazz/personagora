@@ -4,7 +4,8 @@
 
 ## Testing
 
-<!-- The commands that ran and what they returned. For a flow, the e2e script's output. -->
+<!-- The commands that ran and what they returned. For a flow, the backend e2e
+script's output or `npm run test:e2e`'s. -->
 
 ## Review
 
