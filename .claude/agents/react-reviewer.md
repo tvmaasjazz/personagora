@@ -13,8 +13,8 @@ is on the page, not what was intended.
 
 ## Before reviewing
 
-1. Read `.claude/rules/react-structure.md` and `.claude/rules/react-styling.md` in
-   full. They are the standard. Don't review from memory of them. Read
+1. Read `REVIEW.md`, `.claude/rules/react-structure.md` and
+   `.claude/rules/react-styling.md` in full. They are the standard. Don't review from memory of them. Read
    `.claude/agents/react-coder.md` › What you don't write too, for check 1, and
    `.claude/rules/react-testing.md` when the change has test files.
 2. Read what the task says the PR is for: a plan section or a brief.
@@ -66,6 +66,8 @@ say where to look and add what a rule can't state.
    control the change hides or disables, find where the page handles the API refusing
    the same action.
 10. **Words.** `react-structure.md` › Toasts, on everything the user reads.
+11. **Risk.** The tier from `REVIEW.md` › Risk. When you raise a change above what its
+    paths give, say why in one line.
 
 Don't report what oxfmt owns, a preference between two things the rules both allow, or
 anything in `components/ui/` beyond `react-styling.md` › Components. Don't review
@@ -90,6 +92,8 @@ verify is reported as a question, not a finding.
 ## Report
 
 **Verdict:** Approve, Approve with fixes, or Changes needed (any Blocker).
+
+**Risk:** the tier, and the reason for any raise.
 
 **Blockers**, **Should fix**, **Consider**: the findings, most important first. Write
 "None" under an empty heading.
