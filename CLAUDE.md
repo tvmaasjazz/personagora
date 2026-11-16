@@ -26,6 +26,7 @@ docker compose up -d         # Postgres + Redis; the dev server and tests need t
 uv lock                      # regenerate lockfile after dependency changes (hashes included)
 uv run ruff check --fix .    # lint
 uv run ruff format .         # format
+uv run ty check              # type-check
 uv run pytest                # tests
 uv run pytest -m migration   # migration stairway test (rebuilds the test schema)
 uv run alembic upgrade head  # apply migrations to the database in .env
@@ -48,10 +49,10 @@ npm run api:types            # regenerate src/lib/api-schema.gen.ts (needs the A
 npx shadcn@latest add <name> # add a shadcn/ui component to src/components/ui/
 ```
 
-`git commit` runs `.claude/hooks/check-before-commit.sh` first: `ruff check` and
-`ruff format --check` for backend changes, and `npm run fmt:check`, `lint`, `build`
-and `test` for frontend changes. It blocks the commit with their output when one
-fails. Don't run those checks yourself before committing; commit, and fix what a block
+`git commit` runs `.claude/hooks/check-before-commit.sh` first: `ruff check`,
+`ruff format --check` and `ty check` for backend changes, and `npm run fmt:check`,
+`lint`, `build` and `test` for frontend changes. It blocks the commit with their output
+when one fails. Don't run those checks yourself before committing; commit, and fix what a block
 reports. Run `npm run test:e2e` yourself when a flow or a page it walks changed.
 `pytest` must pass before the PR is ready to merge (see Pull requests).
 
@@ -72,7 +73,8 @@ pattern.
 ## Non-obvious stack choices
 
 granian (not uvicorn) · structlog → Logfire (not stdlib logging) · uv (not pip or
-poetry) · async SQLAlchemy throughout · LangGraph for agent workflows · Pydantic
+poetry) · ty (not mypy or pyright), pinned to an exact version because it's pre-1.0 ·
+async SQLAlchemy throughout · LangGraph for agent workflows · Pydantic
 Settings from TOML, overridden by env vars. On the frontend: npm (not pnpm or
 yarn) · oxlint and oxfmt (not ESLint or Prettier), with oxfmt pinned to an exact
 version because it's pre-1.0.
