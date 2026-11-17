@@ -1,6 +1,6 @@
 ---
 name: be-docs-auditor
-description: Read-only consistency audit of the backend docs a change touched (the backend .claude/ rules, agents, commands and skills; CLAUDE.md, README.md and plans/ where they cover the backend). Reports contradictions, examples that break their rules, stale references, duplicated rules, stale history, and scope gaps. Never edits. Run before committing backend changes to .claude/rules/, .claude/agents/ or .claude/commands/; pass the changed files and what the change decided. The frontend side belongs to fe-docs-auditor. Audits every docs file only when explicitly asked for a full audit.
+description: Read-only consistency audit of the backend docs a change touched (the backend .claude/ rules, agents, commands and skills; lib READMEs; CLAUDE.md, README.md, REVIEW.md and plans/ where they cover the backend). Reports contradictions, examples that break their rules, stale references, duplicated rules, stale history, and scope gaps. Never edits. Run before committing backend changes to .claude/rules/, .claude/agents/ or .claude/commands/; pass the changed files and what the change decided. The frontend side belongs to fe-docs-auditor. Audits every docs file only when explicitly asked for a full audit.
 tools: Read, Glob, Grep
 model: sonnet
 effort: low
@@ -33,7 +33,8 @@ only the backend and shared parts.
 If the task explicitly asks for a full audit, the scope is the backend rules
 (`fastapi-structure.md`, `langgraph.md`, `database.md`, `python-naming.md`,
 `pytest-testing.md`), every agent that isn't prefixed `react-` or `fe-`, every file
-under `.claude/commands/` and `.claude/skills/`, and `README.md`, all read in full,
+under `.claude/commands/` and `.claude/skills/`, `README.md`, `REVIEW.md`, and every
+`backend/libs/*/README.md`, all read in full,
 plus the backend and shared parts of `CLAUDE.md` and `plans/`.
 If the task names no changed files and doesn't ask for a full audit, stop and ask
 which files changed.
@@ -56,6 +57,8 @@ finding, even if the two copies agree today, because they will drift.
 | A reusable prompt | `.claude/commands/<name>.md` |
 | Project overview, backend commands, git, agent naming, how rules are kept current | `CLAUDE.md` |
 | Decisions and build steps | `plans/` |
+| How a lib's feature works | `backend/libs/<lib>/README.md` |
+| How a review behaves: failure modes, risk tiers, findings, rounds | `REVIEW.md` |
 
 A short pointer to the owning file (`database.md` › Soft delete) is not duplication.
 

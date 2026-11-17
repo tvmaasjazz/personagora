@@ -11,7 +11,12 @@ backend/
 └── apps/api/        FastAPI service (more services will land beside it)
 plans/               build plans — committed to the repo
 .railway/            Railway project config for every environment (plans/deploy.md)
+REVIEW.md            how code review behaves: what failure looks like, risk tiers, rounds
 ```
+
+`/explain <path or question>` writes an explainer of any slice of the code as it is
+today. A lib whose feature spans several services has a `README.md` with its overview
+(`fastapi-structure.md` › Lib READMEs).
 
 Save plans to `plans/`. The folder is committed and published with the repo, so
 plans can be referenced from other files — and must not contain secrets or
@@ -131,8 +136,9 @@ An agent in `.claude/agents/` is named for the side of the stack it works on:
   `react-reviewer`
 - `fe-` for other frontend work, such as styling, tests or the frontend docs:
   `fe-docs-auditor`, `fe-test-writer`
-- `be-` for backend agents: `be-test-writer`, `be-docs-auditor`. Agents named for a
-  backend tool, `fastapi-coder` and `schema-coder`, keep the tool name instead
+- `be-` for backend agents: `be-reviewer`, `be-test-writer`, `be-docs-auditor`.
+  Agents named for a backend tool, `fastapi-coder` and `schema-coder`, keep the tool
+  name instead
 
 ### Running agents in parallel
 
@@ -175,8 +181,17 @@ the docs audit. Tests, then audit fixes, land afterwards as separate commits
 on the same PR. Until they do, the PR description says what's still to come and which
 existing tests fail.
 
-A frontend PR is reviewed by `react-reviewer` once it's open, after the docs audit.
-Pass it the base and head refs and what the PR is for, never an opinion of the code.
+Once it's open, and before Tyler is asked to review it, the PR goes through:
+1. That side's reviewer, `be-reviewer` or `react-reviewer`, after the docs audit when
+   there is one. Pass it the base and head refs and what the PR is for, never an
+   opinion of the code.
+2. `/code-review`.
+3. `/simplify`.
+4. `/security-review`, when `REVIEW.md` › Risk makes the change High.
+
+Each finding is fixed in its own commit or answered in the PR description. `REVIEW.md`
+says how review behaves, and the description follows
+`.github/pull_request_template.md`.
 
 ## Git
 
