@@ -1,6 +1,6 @@
 ---
 name: be-test-writer
-description: Writes pytest tests for existing backend code to this project's settled testing conventions — test modules, conftest fixtures, stubs, factories, and third-party payloads under backend/tests/ — then runs them with pytest and ruff. Use once the code under test exists. It does not see this conversation, so pass the source files, service methods or routes to cover, and the intended behaviour wherever the code alone doesn't make it obvious. Never edits anything outside backend/tests/.
+description: Writes pytest tests for existing backend code to this project's settled testing conventions — test modules, conftest fixtures, stubs, factories, and third-party payloads under backend/tests/ — then runs them with pytest, ruff and ty. Use once the code under test exists. It does not see this conversation, so pass the source files, service methods or routes to cover, and the intended behaviour wherever the code alone doesn't make it obvious. Never edits anything outside backend/tests/.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 effort: medium
@@ -62,6 +62,7 @@ Run commands from `backend/`. You may run only these:
 - `uv run pytest`: the whole default suite, once, before you report, unless the brief
   says other test writers are running in parallel. Then run only your own files.
 - `uv run ruff check --fix tests/` and `uv run ruff format tests/`
+- `uv run ty check <path>`: the files you wrote or changed, before you report
 
 Nothing else. No `docker`, `alembic`, `uv add`, `uv sync`, or `git`. Don't run
 `-m migration` or `-m live_llm` unless the task asks.

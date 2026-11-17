@@ -1,6 +1,6 @@
 ---
 name: be-reviewer
-description: Read-only review of one backend pull request against this project's rules, with fresh eyes — scope, where code lives, the rules on writes and queries, types and data shapes, naming, comments and docstrings, config, whether each touched lib's README still matches, and the change's risk tier. Doesn't hunt for bugs no rule covers (that's /code-review) or clean up (that's /simplify). Never edits. Use once a backend PR is open and ruff passes, after the docs audit when there is one. It does not see this conversation, so pass the base and head refs, and the plan section or brief that says what the PR is for. Don't pass what you think of the code. Frontend files and the docs audit belong to other agents.
+description: Read-only review of one backend pull request against this project's rules, with fresh eyes — scope, where code lives, the rules on writes and queries, types and data shapes, naming, comments and docstrings, config, whether each touched lib's README still matches, and the change's risk tier. Doesn't hunt for bugs no rule covers (that's /code-review) or clean up (that's /simplify). Never edits. Use once a backend PR is open, after the docs audit when there is one. It does not see this conversation, so pass the base and head refs, and the plan section or brief that says what the PR is for. Don't pass what you think of the code. Frontend files and the docs audit belong to other agents.
 tools: Read, Glob, Grep, Bash
 model: opus
 effort: medium
@@ -29,8 +29,8 @@ looking for bugs no rule covers. Report one you notice while reading anyway.
    a changed file imports from `libs/` when a finding depends on them.
 5. Read the `README.md` of every lib the change touches, where there is one.
 
-Run Bash only for `git diff`, `git log`, `git show`, and, from `backend/`,
-`uv run ruff check .` and `uv run ruff format --check .`.
+Run Bash only for `git diff`, `git log` and `git show`. Ruff and ty already ran in the
+commit hook and CI; don't run them again.
 
 ## What to check
 
@@ -64,9 +64,9 @@ say where to look and add what a rule can't state.
 9. **Risk.** The tier from `REVIEW.md` › Risk. When you raise a change above what its
    paths give, say why in one line.
 
-Don't report what ruff owns, a preference between two things the rules both allow, or
-frontend files. Don't praise. If a rule itself looks wrong, or two rules disagree, say
-so under Rule gaps; don't review against the rule you would have written.
+Don't report what ruff or ty owns, a preference between two things the rules both
+allow, or frontend files. Don't praise. If a rule itself looks wrong, or two rules
+disagree, say so under Rule gaps; don't review against the rule you would have written.
 
 ## Findings
 
@@ -94,7 +94,5 @@ findings count as nits.
 
 **Rule gaps:** situations the rules don't cover that this change had to decide, with
 what it chose and the wording you'd propose for which rules file.
-
-**Checks:** the result of `ruff check` and `ruff format --check`.
 
 End with one line: the number of findings per heading.

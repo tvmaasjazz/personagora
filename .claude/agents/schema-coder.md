@@ -52,6 +52,9 @@ Run commands from `backend/`. You may run only these:
 - `DATABASE_URL=postgresql+asyncpg://psg:psg@localhost:5437/psg_test uv run python -m scripts.db.check_schema_drift`
 - `uv run pytest`, once, before you report
 - `uv run ruff check --fix migrations/ libs/` and `uv run ruff format migrations/ libs/`
+- `uv run ty check`, after the Orm class is written. Fix what it reports in your files.
+  An error elsewhere, such as a service that reads a column whose type changed, goes
+  under Follow-up needed with its file and line
 
 Nothing else. Never run `alembic upgrade` or `alembic downgrade` yourself: without the
 `DATABASE_URL` override they hit Tyler's local database from `.env`. No `docker`,
