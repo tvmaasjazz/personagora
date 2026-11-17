@@ -105,9 +105,8 @@ it covers.
 required case left out with the reason.
 
 **Test run**: the exact commands you ran, the final pytest summary line, and anything
-ruff or ty reported that you left. For each
-test still failing: its name, a one-line cause, and whether the cause is the source,
-the environment, or an open question.
+ruff or ty reported that you left. For each test still failing: its name, a one-line
+cause, and whether the cause is the source, the environment, or an open question.
 
 **Conventions applied**: the specific conventions you followed, each tied to where you
 applied it. Name the rule and the file, e.g.:
