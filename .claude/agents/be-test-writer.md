@@ -61,8 +61,8 @@ Run commands from `backend/`. You may run only these:
 - `uv run pytest <path>`: the files you wrote or changed, while you work
 - `uv run pytest`: the whole default suite, once, before you report, unless the brief
   says other test writers are running in parallel. Then run only your own files.
-- `uv run ruff check --fix tests/` and `uv run ruff format tests/`
-- `uv run ty check <path>`: the files you wrote or changed, before you report
+- `uv run ruff check --fix <path>`, `uv run ruff format <path>` and
+  `uv run ty check <path>`: the files you wrote or changed, before you report
 
 Nothing else. No `docker`, `alembic`, `uv add`, `uv sync`, or `git`. Don't run
 `-m migration` or `-m live_llm` unless the task asks.
@@ -104,7 +104,8 @@ it covers.
 **Coverage**: for each source file in the task, the required cases covered, and any
 required case left out with the reason.
 
-**Test run**: the exact commands you ran and the final pytest summary line. For each
+**Test run**: the exact commands you ran, the final pytest summary line, and anything
+ruff or ty reported that you left. For each
 test still failing: its name, a one-line cause, and whether the cause is the source,
 the environment, or an open question.
 
