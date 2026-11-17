@@ -31,6 +31,7 @@ async def test_create_persona_returns_identity_and_persists_row(
     response_body = create_persona_response.json()
     persona_query = select(PersonaOrm).where(PersonaOrm.identity == response_body["identity"])
     persona_record = await db_session.scalar(persona_query)
+    assert persona_record is not None
     assert create_persona_response.status_code == 201
     assert response_body == {"identity": str(persona_record.identity)}
     assert persona_record.name == "Ada the Essayist"
@@ -56,6 +57,7 @@ async def test_create_persona_optional_fields_omitted_persists_null_fields(
     response_body = create_persona_response.json()
     persona_query = select(PersonaOrm).where(PersonaOrm.identity == response_body["identity"])
     persona_record = await db_session.scalar(persona_query)
+    assert persona_record is not None
     assert create_persona_response.status_code == 201
     assert persona_record.avatar_url is None
     assert persona_record.background is None
@@ -77,6 +79,7 @@ async def test_create_persona_is_public_true_persists_is_public(
     response_body = create_persona_response.json()
     persona_query = select(PersonaOrm).where(PersonaOrm.identity == response_body["identity"])
     persona_record = await db_session.scalar(persona_query)
+    assert persona_record is not None
     assert create_persona_response.status_code == 201
     assert persona_record.is_public is True
 
@@ -91,6 +94,7 @@ async def test_create_persona_surrounding_whitespace_persists_stripped_name_and_
     response_body = create_persona_response.json()
     persona_query = select(PersonaOrm).where(PersonaOrm.identity == response_body["identity"])
     persona_record = await db_session.scalar(persona_query)
+    assert persona_record is not None
     assert create_persona_response.status_code == 201
     assert persona_record.name == "Ada the Essayist"
     assert persona_record.bio == "Writes essays."
@@ -106,6 +110,7 @@ async def test_create_persona_name_and_bio_at_maximum_length_persists_row(
     response_body = create_persona_response.json()
     persona_query = select(PersonaOrm).where(PersonaOrm.identity == response_body["identity"])
     persona_record = await db_session.scalar(persona_query)
+    assert persona_record is not None
     assert create_persona_response.status_code == 201
     assert persona_record.name == "n" * 80
     assert persona_record.bio == "b" * 500

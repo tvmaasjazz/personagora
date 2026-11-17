@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from libs.content_engagement.settings import ContentEngagementSettings
 from libs.content_engagement.utils import ContentEngagementUtils
 from libs.database.orm import ContentItemEngagementOrm, ContentItemOrm, UserOrm
+from libs.database.utils import DatabaseResultUtils
 
 
 class ContentEngagementService:
@@ -106,7 +107,8 @@ class ContentEngagementService:
         rescore_all_update_result = await self._db_session.execute(
             content_item_engagement_rescore_all_update
         )
-        return rescore_all_update_result.rowcount
+        rescore_all_row_count = DatabaseResultUtils.get_row_count(rescore_all_update_result)
+        return rescore_all_row_count
 
     def _build_system_user_id_sql(self) -> ColumnElement[int]:
         return select(UserOrm.id).where(UserOrm.is_system_user).scalar_subquery()

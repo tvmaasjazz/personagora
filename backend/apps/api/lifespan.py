@@ -2,7 +2,7 @@ import asyncio
 import os
 import secrets
 import socket
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import structlog
@@ -39,7 +39,7 @@ def build_worker_id(app_settings: AppSettings) -> str:
 
 
 @asynccontextmanager
-async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None]:
     # Create the app-scoped resources
     app_settings = fastapi_app.state.settings
     configure_logging(app_settings)

@@ -300,7 +300,9 @@ async def test_get_anonymous_user_key_signed_in_returns_none(
     fastapi_app: FastAPI, api_client: AsyncClient
 ) -> None:
     @fastapi_app.get("/anonymous-user-key-route")
-    async def anonymous_user_key_route(anonymous_user_key: AnonymousUserKeyDep) -> dict[str, None]:
+    async def anonymous_user_key_route(
+        anonymous_user_key: AnonymousUserKeyDep,
+    ) -> dict[str, str | None]:
         return {"anonymous_user_key": anonymous_user_key}
 
     anonymous_user_key_response = await api_client.get("/anonymous-user-key-route")

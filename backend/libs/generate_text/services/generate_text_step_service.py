@@ -10,7 +10,7 @@ from libs.credits.utils import CreditUtils
 from libs.database.orm.generate_text_run import GenerateTextRunOrm
 from libs.database.orm.generate_text_step import GenerateTextStepOrm
 from libs.database.orm.llm_call import LlmCallOrm
-from libs.database.utils import DatabaseClockUtils
+from libs.database.utils import DatabaseClockUtils, DatabaseResultUtils
 from libs.generate_text.constants import STEP_OUTPUT_TEXT_KEY
 from libs.generate_text.exceptions import GenerateTextRunNotRunningException
 from libs.generate_text.inputs import CreateGenerateTextStepInput
@@ -147,7 +147,10 @@ class GenerateTextStepService:
                 )
             )
             step_completion_update_result = await db_session.execute(step_completion_update)
-            if step_completion_update_result.rowcount == 0:
+            step_completion_row_count = DatabaseResultUtils.get_row_count(
+                step_completion_update_result
+            )
+            if step_completion_row_count == 0:
                 return
 
             # Charge the user for the step in the same transaction, so a charge never
@@ -176,7 +179,8 @@ class GenerateTextStepService:
         )
         async with self._db_session_factory() as db_session, db_session.begin():
             step_failure_update_result = await db_session.execute(step_failure_update)
-            if step_failure_update_result.rowcount == 0:
+            step_failure_row_count = DatabaseResultUtils.get_row_count(step_failure_update_result)
+            if step_failure_row_count == 0:
                 await self._raise_if_step_missing(db_session, step_id)
 
     async def record_decision(
@@ -200,7 +204,8 @@ class GenerateTextStepService:
         )
         async with self._db_session_factory() as db_session, db_session.begin():
             step_decision_update_result = await db_session.execute(step_decision_update)
-            if step_decision_update_result.rowcount == 0:
+            step_decision_row_count = DatabaseResultUtils.get_row_count(step_decision_update_result)
+            if step_decision_row_count == 0:
                 raise NotFoundException(f"Generate text step {step_id} not found")
 
     async def find_awaiting_review_step_id(self, run_id: int) -> int | None:
@@ -280,7 +285,8 @@ class GenerateTextStepService:
         )
         async with self._db_session_factory() as db_session, db_session.begin():
             step_pause_update_result = await db_session.execute(step_pause_update)
-            if step_pause_update_result.rowcount == 0:
+            step_pause_row_count = DatabaseResultUtils.get_row_count(step_pause_update_result)
+            if step_pause_row_count == 0:
                 await self._raise_if_step_missing(db_session, step_id)
 
     async def _find_llm_call_rollup(

@@ -23,7 +23,7 @@ class PaginationService:
         self,
         all_records_query: Select[Any],
         pagination_config: PaginationConfig,
-        page_input: BasePageInput,
+        page_input: BasePageInput[Any],
         load_options: Sequence[ExecutableOption] = (),
     ) -> FindPageResult:
         """Runs one page of a query that selects one Orm entity, returning the entities, with
@@ -39,7 +39,7 @@ class PaginationService:
         self,
         all_records_query: Select[Any],
         pagination_config: PaginationConfig,
-        page_input: BasePageInput,
+        page_input: BasePageInput[Any],
     ) -> FindPageResult:
         """Runs one page of a query that selects columns, returning each row as a mapping of
         its labels."""
@@ -62,7 +62,7 @@ class PaginationService:
         self,
         all_records_query: Select[Any],
         pagination_config: PaginationConfig,
-        page_input: BasePageInput,
+        page_input: BasePageInput[Any],
         load_options: Sequence[ExecutableOption] = (),
     ) -> tuple[Sequence[Row[Any]], PaginationResult]:
         """Runs one page of the query and finds its total."""

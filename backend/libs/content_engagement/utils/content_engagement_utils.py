@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ColumnElement, Double, cast, extract, func, literal
+from sqlalchemy import ColumnElement, Double, SQLColumnExpression, cast, extract, func, literal
 
 from libs.content_engagement.constants import FEED_SCORE_START_AT
 from libs.content_engagement.settings import ContentEngagementSettings
@@ -16,9 +16,9 @@ class ContentEngagementUtils:
 
     @staticmethod
     def build_feed_score_sql(
-        view_count_sql: ColumnElement[Any],
-        read_percent_sum_sql: ColumnElement[Any],
-        published_at_sql: ColumnElement[datetime | None],
+        view_count_sql: SQLColumnExpression[Any],
+        read_percent_sum_sql: SQLColumnExpression[Any],
+        published_at_sql: SQLColumnExpression[datetime | None],
         content_engagement_settings: ContentEngagementSettings,
     ) -> ColumnElement[float]:
         """The feed score as SQL; higher sorts first, and NULL for an unpublished item.

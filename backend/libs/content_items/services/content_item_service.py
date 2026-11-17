@@ -9,7 +9,7 @@ from libs.content_items.inputs import CreateContentItemInput, UpdateContentItemI
 from libs.content_items.results import CreateContentItemResult
 from libs.core.exceptions import NotFoundException
 from libs.database.orm import ContentItemOrm, GenerateTextRunOrm
-from libs.database.utils import DatabaseClockUtils
+from libs.database.utils import DatabaseClockUtils, DatabaseResultUtils
 
 
 class ContentItemService:
@@ -68,7 +68,8 @@ class ContentItemService:
             )
         )
         content_item_update_result = await self._db_session.execute(content_item_update)
-        if content_item_update_result.rowcount == 0:
+        content_item_row_count = DatabaseResultUtils.get_row_count(content_item_update_result)
+        if content_item_row_count == 0:
             raise NotFoundException("Content item not found")
 
         # The publish time may have changed, so the feed score is rewritten
@@ -88,7 +89,10 @@ class ContentItemService:
         content_item_soft_delete_update_result = await self._db_session.execute(
             content_item_soft_delete_update
         )
-        if content_item_soft_delete_update_result.rowcount == 0:
+        content_item_soft_delete_row_count = DatabaseResultUtils.get_row_count(
+            content_item_soft_delete_update_result
+        )
+        if content_item_soft_delete_row_count == 0:
             raise NotFoundException("Content item not found")
 
     async def _link_generate_text_run(
@@ -106,5 +110,8 @@ class ContentItemService:
         generate_text_run_link_update_result = await self._db_session.execute(
             generate_text_run_link_update
         )
-        if generate_text_run_link_update_result.rowcount == 0:
+        generate_text_run_link_row_count = DatabaseResultUtils.get_row_count(
+            generate_text_run_link_update_result
+        )
+        if generate_text_run_link_row_count == 0:
             raise NotFoundException("Generate text run not found")

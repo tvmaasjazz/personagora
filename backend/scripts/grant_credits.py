@@ -56,6 +56,7 @@ async def _grant_credits(email: str, amount_usd: Decimal, note: str) -> None:
                 raise SystemExit(f"No user with email {email}: they must sign in once first")
             system_user_query = select(UserOrm).where(UserOrm.is_system_user.is_(True))
             system_user_record = await db_session.scalar(system_user_query)
+            assert system_user_record is not None
             system_auth_user = AuthUser(
                 id=system_user_record.id,
                 identity=system_user_record.identity,

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import cast
 from urllib.parse import parse_qs, urlparse
 
 from httpx import AsyncClient
@@ -193,7 +194,10 @@ async def _find_stored_oauth_states(redis_client: Redis) -> list[OAuthStateResul
     stored_states = [
         await redis_client.get(oauth_state_key) for oauth_state_key in oauth_state_keys
     ]
-    return [OAuthStateResult.model_validate_json(stored_state) for stored_state in stored_states]
+    return [
+        OAuthStateResult.model_validate_json(cast(bytes, stored_state))
+        for stored_state in stored_states
+    ]
 
 
 async def test_get_google_login_usable_invite_redirects_to_google_and_stores_code_in_state(

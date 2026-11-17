@@ -80,7 +80,7 @@ def require_permissions(*permission_types: PermissionType) -> Callable[[AuthUser
         if not required_permissions <= auth_user.permissions:
             raise ForbiddenException("You don't have permission to do this")
 
-    check_permissions.required_permissions = required_permissions  # type: ignore[attr-defined]
+    check_permissions.required_permissions = required_permissions  # ty: ignore[missing-attribute]
     return check_permissions
 
 

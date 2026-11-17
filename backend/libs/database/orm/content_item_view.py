@@ -50,7 +50,7 @@ class ContentItemViewOrm(BaseOrm):
 
     # A signed-out visitor's view has no user, so the audit columns are nullable
     # (database.md, Shared columns)
-    created_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(UserOrm.id))
-    updated_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(UserOrm.id))
+    created_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(UserOrm.id))  # ty: ignore[incompatible-attribute-override]
+    updated_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(UserOrm.id))  # ty: ignore[incompatible-attribute-override]
 
     content_item: Mapped[ContentItemOrm] = relationship()

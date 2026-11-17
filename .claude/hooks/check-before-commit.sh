@@ -42,6 +42,7 @@ if printf '%s\n' "$changed" | grep -q '^backend/'; then
 	fi
 	run_check backend uv run ruff check .
 	run_check backend uv run ruff format --check .
+	run_check backend uv run ty check
 fi
 
 if printf '%s\n' "$changed" | grep -q '^frontend/'; then

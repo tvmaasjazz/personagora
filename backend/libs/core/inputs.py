@@ -12,6 +12,6 @@ class PaginationInput(BaseModel):
     sort_direction: SortDirectionType
 
 
-class BasePageInput(BaseModel):
+class BasePageInput[SortT: StrEnum](BaseModel):
     pagination_input: PaginationInput
-    sort_by: StrEnum
+    sort_by: SortT

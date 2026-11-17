@@ -7,13 +7,11 @@ from libs.blog_posts.types import PublicBlogPostSortType, UserBlogPostSortType
 from libs.core.inputs import BasePageInput
 
 
-class FindUserBlogPostPageInput(BasePageInput):
-    sort_by: UserBlogPostSortType
+class FindUserBlogPostPageInput(BasePageInput[UserBlogPostSortType]):
     persona_identity: UUID | None
 
 
-class FindPublicBlogPostPageInput(BasePageInput):
-    sort_by: PublicBlogPostSortType
+class FindPublicBlogPostPageInput(BasePageInput[PublicBlogPostSortType]):
     persona_identity: UUID | None
 
 

@@ -10,7 +10,7 @@ from libs.database.orm.generate_text_run import GenerateTextRunOrm
 from libs.database.orm.generate_text_step import GenerateTextStepOrm
 from libs.database.orm.llm_call import LlmCallOrm
 from libs.database.orm.persona import PersonaOrm
-from libs.database.utils import DatabaseClockUtils
+from libs.database.utils import DatabaseClockUtils, DatabaseResultUtils
 from libs.generate_text.constants import UNFINISHED_RUN_STATUSES
 from libs.generate_text.inputs import CreateGenerateTextRunInput
 from libs.generate_text.results import (
@@ -76,9 +76,10 @@ class GenerateTextRunService:
         )
         async with self._db_session_factory() as db_session, db_session.begin():
             run_start_update_result = await db_session.execute(run_start_update)
-            if run_start_update_result.rowcount == 0:
+            run_start_row_count = DatabaseResultUtils.get_row_count(run_start_update_result)
+            if run_start_row_count == 0:
                 await self._raise_if_run_missing(db_session, run_id)
-        return run_start_update_result.rowcount == 1
+        return run_start_row_count == 1
 
     async def claim_paused_run(self, run_id: int, lease_owner: str, lease_seconds: int) -> bool:
         """Moves a paused run to RUNNING under the given lease. False when it wasn't paused."""
@@ -98,7 +99,8 @@ class GenerateTextRunService:
         )
         async with self._db_session_factory() as db_session, db_session.begin():
             run_claim_update_result = await db_session.execute(run_claim_update)
-        return run_claim_update_result.rowcount == 1
+            run_claim_row_count = DatabaseResultUtils.get_row_count(run_claim_update_result)
+        return run_claim_row_count == 1
 
     async def claim_expired_run(
         self, lease_owner: str, lease_seconds: int, run_id: int | None = None
@@ -153,7 +155,10 @@ class GenerateTextRunService:
         )
         async with self._db_session_factory() as db_session, db_session.begin():
             run_lease_renewal_update_result = await db_session.execute(run_lease_renewal_update)
-        return run_lease_renewal_update_result.rowcount == 1
+            run_lease_renewal_row_count = DatabaseResultUtils.get_row_count(
+                run_lease_renewal_update_result
+            )
+        return run_lease_renewal_row_count == 1
 
     async def release_lease(self, run_id: int, lease_owner: str) -> bool:
         """Expires the lease now; False when the lease isn't this owner's."""
@@ -167,7 +172,10 @@ class GenerateTextRunService:
         )
         async with self._db_session_factory() as db_session, db_session.begin():
             run_lease_release_update_result = await db_session.execute(run_lease_release_update)
-        return run_lease_release_update_result.rowcount == 1
+            run_lease_release_row_count = DatabaseResultUtils.get_row_count(
+                run_lease_release_update_result
+            )
+        return run_lease_release_row_count == 1
 
     async def complete_run(self, run_id: int) -> None:
         """Marks a RUNNING run COMPLETED with its LLM cost totals and clears its lease; leaves
@@ -195,7 +203,10 @@ class GenerateTextRunService:
                 )
             )
             run_completion_update_result = await db_session.execute(run_completion_update)
-            if run_completion_update_result.rowcount == 0:
+            run_completion_row_count = DatabaseResultUtils.get_row_count(
+                run_completion_update_result
+            )
+            if run_completion_row_count == 0:
                 await self._raise_if_run_missing(db_session, run_id)
 
     async def record_awaiting_review(self, run_id: int) -> None:
@@ -223,7 +234,8 @@ class GenerateTextRunService:
                 )
             )
             run_pause_update_result = await db_session.execute(run_pause_update)
-            if run_pause_update_result.rowcount == 0:
+            run_pause_row_count = DatabaseResultUtils.get_row_count(run_pause_update_result)
+            if run_pause_row_count == 0:
                 await self._raise_if_run_missing(db_session, run_id)
 
     async def fail_run(

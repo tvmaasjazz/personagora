@@ -25,11 +25,11 @@ class ContentItemSortType(StrEnum):
     CREATED = "CREATED"
 
 
-class ContentItemPageInput(BasePageInput):
+class ContentItemPageInput(BasePageInput[ContentItemSortType]):
     sort_by: ContentItemSortType = ContentItemSortType.CREATED
 
 
-class UserPageInput(BasePageInput):
+class UserPageInput(BasePageInput[UserSortType]):
     sort_by: UserSortType = UserSortType.EMAIL
 
 

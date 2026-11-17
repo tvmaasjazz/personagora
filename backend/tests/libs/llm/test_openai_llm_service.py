@@ -7,6 +7,7 @@ import structlog.testing
 from pydantic import BaseModel
 
 from libs.llm.exceptions import (
+    LlmException,
     LlmFailedException,
     LlmRateLimitedException,
     LlmUnavailableException,
@@ -179,7 +180,7 @@ async def test_complete_non_retryable_status_raises_mapped_exception_after_one_r
     openai_llm_service: OpenAiLlmService,
     openai_handler_stub: HttpHandlerStub,
     status_code: int,
-    expected_exception: type[Exception],
+    expected_exception: type[LlmException],
 ) -> None:
     openai_error_payload = build_openai_error_payload(message="stub provider error")
     openai_handler_stub.handle_responses.append(
@@ -207,7 +208,7 @@ async def test_complete_retryable_status_exhausted_raises_mapped_exception(
     openai_llm_service: OpenAiLlmService,
     openai_handler_stub: HttpHandlerStub,
     status_code: int,
-    expected_exception: type[Exception],
+    expected_exception: type[LlmException],
 ) -> None:
     openai_error_payload = build_openai_error_payload(message="stub provider error")
     openai_handler_stub.handle_responses.extend(

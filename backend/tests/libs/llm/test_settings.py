@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -7,7 +8,6 @@ from libs.llm.settings import (
     FastLlmTierSettings,
     LlmModelPricingSettings,
     LlmSettings,
-    LlmTierSettings,
     StrongLlmTierSettings,
     ThinkingLlmTierSettings,
 )
@@ -46,7 +46,7 @@ def test_llm_settings_every_tier_model_priced_is_accepted() -> None:
     ],
 )
 def test_llm_settings_tier_model_without_pricing_raises_validation_error(
-    unpriced_tier_settings: dict[str, LlmTierSettings],
+    unpriced_tier_settings: dict[str, Any],
 ) -> None:
     with pytest.raises(ValidationError):
         LlmSettings(**unpriced_tier_settings)

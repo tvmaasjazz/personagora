@@ -167,7 +167,9 @@ class DevSeedService:
         """Adds every case that isn't there yet and rescores the feed."""
         # The database clock is the "now" every backdated time counts from
         now_query = select(DatabaseClockUtils.build_utc_now_sql())
-        self._now = await self._db_session.scalar(now_query)
+        database_now = await self._db_session.scalar(now_query)
+        assert database_now is not None
+        self._now = database_now
 
         admin_auth_user = await self._seed_admin()
         await self._seed_creator(admin_auth_user)
@@ -202,7 +204,9 @@ class DevSeedService:
         # No service makes an admin, so the role is set on the row
         admin_role_id_query = select(RoleOrm.id).where(RoleOrm.code == RoleType.ADMIN)
         admin_role_id = await self._db_session.scalar(admin_role_id_query)
+        assert admin_role_id is not None
         user_record = await self._db_session.get(UserOrm, create_seed_user_result.id)
+        assert user_record is not None
         user_record.role_id = admin_role_id
         await self._db_session.flush()
 
@@ -383,6 +387,7 @@ class DevSeedService:
                 InviteOrm.identity == admin_create_invite_result.identity
             )
             invite_record = await self._db_session.scalar(invite_query)
+            assert invite_record is not None
             invite_record.created_at = self._now - timedelta(days=10)
             invite_record.expires_at = self._now - timedelta(days=3)
             await self._db_session.flush()
@@ -425,6 +430,7 @@ class DevSeedService:
         # Sign-in records no activity, so a user who came back gets backdated times
         if last_activity_days_ago is not None:
             user_record = await self._db_session.get(UserOrm, find_or_create_result.id)
+            assert user_record is not None
             user_record.last_login_at = self._now - timedelta(days=last_activity_days_ago)
             user_record.last_activity_at = self._now - timedelta(days=last_activity_days_ago)
             await self._db_session.flush()

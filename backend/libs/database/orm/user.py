@@ -35,5 +35,5 @@ class UserOrm(BaseOrm):
     role_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(RoleOrm.id))
 
     # A person signing up has no creator, so psg_user relaxes BaseOrm's audit columns.
-    created_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("psg_user.id"))
-    updated_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("psg_user.id"))
+    created_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("psg_user.id"))  # ty: ignore[incompatible-attribute-override]
+    updated_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("psg_user.id"))  # ty: ignore[incompatible-attribute-override]

@@ -73,7 +73,7 @@ class GenerateTextGraphStub(CompiledStateGraph):
             interrupts=(),
         )
 
-    async def astream(
+    async def astream(  # ty: ignore[incompatible-method-override]
         self,
         graph_input: object,
         graph_run_config: dict[str, object],
@@ -94,7 +94,7 @@ class GenerateTextGraphStub(CompiledStateGraph):
         for astream_chunk in self.astream_chunks:
             yield astream_chunk
 
-    async def aget_state(self, graph_run_config: dict[str, object]) -> StateSnapshot:
+    async def aget_state(self, graph_run_config: dict[str, object]) -> StateSnapshot:  # ty: ignore[incompatible-method-override]
         return self.aget_state_result
 
 
@@ -113,7 +113,7 @@ class GenerateTextGraphBuilderStub(BaseGenerateTextGraphBuilder):
 
 class GenerateTextGraphBuilderRegistryStub(GenerateTextGraphBuilderRegistry):
     def __init__(self) -> None:
-        self.get_by_text_type_result: BaseGenerateTextGraphBuilder = GenerateTextGraphBuilderStub()
+        self.get_by_text_type_result = GenerateTextGraphBuilderStub()
 
     def get_by_text_type(self, text_type: TextType) -> BaseGenerateTextGraphBuilder:
         return self.get_by_text_type_result

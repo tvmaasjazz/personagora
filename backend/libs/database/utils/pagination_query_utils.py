@@ -40,7 +40,7 @@ class PaginationQueryUtils:
     def build_filtered_query(
         all_records_query: Select[Any],
         pagination_config: PaginationConfig,
-        page_input: BasePageInput,
+        page_input: BasePageInput[Any],
     ) -> Select[Any]:
         """Adds the page input's filters that are set and the search words to the query."""
         pagination_input = page_input.pagination_input
@@ -78,7 +78,7 @@ class PaginationQueryUtils:
     def build_page_query(
         filtered_query: Select[Any],
         pagination_config: PaginationConfig,
-        page_input: BasePageInput,
+        page_input: BasePageInput[Any],
     ) -> Select[Any]:
         """Adds the total of all filtered rows, orders by the sort column then the tiebreak
         column, and slices out one page."""

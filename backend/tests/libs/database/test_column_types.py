@@ -32,6 +32,7 @@ async def test_utc_date_time_loads_stored_value_as_aware_utc(db_session: AsyncSe
 
     last_login_at_query = select(UserOrm.last_login_at).where(UserOrm.id == user_record.id)
     loaded_last_login_at = await db_session.scalar(last_login_at_query)
+    assert loaded_last_login_at is not None
 
     assert loaded_last_login_at == datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     assert loaded_last_login_at.tzinfo == UTC

@@ -1,8 +1,10 @@
+from collections.abc import AsyncGenerator
 from contextlib import aclosing
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
 import structlog
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command, StateSnapshot
@@ -121,7 +123,9 @@ class GenerateTextService:
         find_run_result = await self._run_service.find_run_by_identity(create_run_result.identity)
 
         # Start the graph in the background; the run's identity is its thread id
-        graph_run_config = {"configurable": {"thread_id": str(create_run_result.identity)}}
+        graph_run_config: RunnableConfig = {
+            "configurable": {"thread_id": str(create_run_result.identity)}
+        }
         self._background_job_service.start(
             self._run_graph_in_background(
                 generate_text_graph,
@@ -164,7 +168,7 @@ class GenerateTextService:
             )
 
         generate_text_graph = graph_builder.build_graph(find_run_result.options, self._checkpointer)
-        graph_run_config = {"configurable": {"thread_id": str(run_identity)}}
+        graph_run_config: RunnableConfig = {"configurable": {"thread_id": str(run_identity)}}
 
         # Claim the paused run
         is_claimed = await self._lease_service.claim_paused_run(find_run_result.id)
@@ -260,7 +264,9 @@ class GenerateTextService:
             return
 
         # Start the graph with no input, so it continues from its last checkpoint
-        graph_run_config = {"configurable": {"thread_id": str(claim_expired_run_result.identity)}}
+        graph_run_config: RunnableConfig = {
+            "configurable": {"thread_id": str(claim_expired_run_result.identity)}
+        }
         self._background_job_service.start(
             self._run_graph_in_background(
                 generate_text_graph,
@@ -275,7 +281,7 @@ class GenerateTextService:
         self,
         generate_text_graph: CompiledStateGraph,
         graph_input: object,
-        graph_run_config: dict[str, object],
+        graph_run_config: RunnableConfig,
         run_id: int,
         should_start_run: bool,
     ) -> None:
@@ -314,12 +320,16 @@ class GenerateTextService:
         self,
         generate_text_graph: CompiledStateGraph,
         graph_input: object,
-        graph_run_config: dict[str, object],
+        graph_run_config: RunnableConfig,
     ) -> bool:
         """Runs the graph step by step; returns True when it stopped early for shutdown."""
         # Each step is saved to the checkpointer before its update arrives here
-        graph_stream = generate_text_graph.astream(
-            graph_input, graph_run_config, stream_mode="updates", durability="sync"
+        # astream is typed as an iterator but returns an async generator, which aclosing needs
+        graph_stream = cast(
+            AsyncGenerator[Any],
+            generate_text_graph.astream(
+                graph_input, graph_run_config, stream_mode="updates", durability="sync"
+            ),
         )
 
         # Check for shutdown between steps; closing the stream starts no further step

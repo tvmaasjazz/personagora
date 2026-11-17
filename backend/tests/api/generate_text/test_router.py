@@ -181,6 +181,7 @@ async def test_generate_blog_post_persists_run_row_with_persona_tone_and_target_
     run_record = await db_session.scalar(run_query)
     persona_query = select(PersonaOrm).where(PersonaOrm.identity == UUID(persona_identity))
     persona_record = await db_session.scalar(persona_query)
+    assert persona_record is not None
     assert run_record is not None
     assert run_record.status == GenerateTextRunStatusType.COMPLETED
     assert run_record.prompt_text == "Write about sourdough starters."

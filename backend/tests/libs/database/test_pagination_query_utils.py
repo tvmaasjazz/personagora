@@ -21,7 +21,7 @@ class UserSortType(StrEnum):
     CREDIT_BALANCE = "CREDIT_BALANCE"
 
 
-class UserPageInput(BasePageInput):
+class UserPageInput(BasePageInput[UserSortType]):
     sort_by: UserSortType = UserSortType.EMAIL
     email: str | None = None
     emails: list[str] | None = None

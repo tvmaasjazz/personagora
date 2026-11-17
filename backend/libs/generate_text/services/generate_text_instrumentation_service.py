@@ -10,7 +10,8 @@ from libs.generate_text.services.generate_text_step_service import GenerateTextS
 from libs.generate_text.states import GenerateTextState
 from libs.generate_text.types import GenerateTextNodeType
 
-GenerateTextNode = Callable[[GenerateTextState], Awaitable[dict[str, Any]]]
+# Callable[..., ...] because LangGraph's node protocol calls state by keyword
+GenerateTextNode = Callable[..., Awaitable[dict[str, Any]]]
 
 
 class GenerateTextInstrumentationService:

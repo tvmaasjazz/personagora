@@ -21,7 +21,8 @@ backend/
 │   │                    #   services/, utils/
 │   ├── database/        # BaseOrm, session factory, orm/: see database.md;
 │   │                    #   pagination_config.py, results.py, services/ (PaginationService),
-│   │                    #   utils/ (DatabaseClockUtils, PaginationQueryUtils)
+│   │                    #   utils/ (DatabaseClockUtils, DatabaseResultUtils,
+│   │                    #   PaginationQueryUtils)
 │   └── <domain>/        # services.py or services/, inputs.py, results.py, settings.py,
 │                        #   types.py, constants.py; as needed: exceptions.py, utils/,
 │                        #   after_response_tasks.py; LLM work: see langgraph.md
@@ -458,6 +459,10 @@ An update that needs an access check reads the row first, in its own query that 
 access check skips the read: its `WHERE` is the lookup, and a row count of 0 raises
 `NotFoundException`. The soft-delete rule only filters selects, so on a table whose
 rows are soft-deleted that `WHERE` adds `<Orm>.deleted_at.is_(None)`.
+
+A write's row count comes from `DatabaseResultUtils.get_row_count(<x>_result)`, read
+once into `<x>_row_count` right after the `execute()`. Never `.rowcount` or a cast at
+the call site.
 
 **A write that moves a row to a new status, or claims it, names the statuses it moves
 from in its `WHERE`**, so a late write from a job that's being stopped can't undo a
