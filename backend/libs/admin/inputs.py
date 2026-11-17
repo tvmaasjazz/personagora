@@ -7,16 +7,16 @@ from libs.core.inputs import BasePageInput
 from libs.permissions.types import RoleType
 
 
-class AdminFindUserPageInput(BasePageInput):
-    sort_by: AdminUserSortType  # ty: ignore[incompatible-mutable-override]
+class AdminFindUserPageInput(BasePageInput[AdminUserSortType]):
+    pass
 
 
-class AdminFindInvitePageInput(BasePageInput):
-    sort_by: AdminInviteSortType  # ty: ignore[incompatible-mutable-override]
+class AdminFindInvitePageInput(BasePageInput[AdminInviteSortType]):
+    pass
 
 
-class AdminFindUserCreditLedgerPageInput(BasePageInput):
-    sort_by: AdminCreditLedgerSortType  # ty: ignore[incompatible-mutable-override]
+class AdminFindUserCreditLedgerPageInput(BasePageInput[AdminCreditLedgerSortType]):
+    pass
 
 
 class AdminGrantUserCreditsInput(BaseModel):

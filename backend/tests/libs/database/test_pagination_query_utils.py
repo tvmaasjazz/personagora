@@ -21,8 +21,8 @@ class UserSortType(StrEnum):
     CREDIT_BALANCE = "CREDIT_BALANCE"
 
 
-class UserPageInput(BasePageInput):
-    sort_by: UserSortType = UserSortType.EMAIL  # ty: ignore[incompatible-mutable-override]
+class UserPageInput(BasePageInput[UserSortType]):
+    sort_by: UserSortType = UserSortType.EMAIL
     email: str | None = None
     emails: list[str] | None = None
     min_credit_balance_usd: Decimal | None = None

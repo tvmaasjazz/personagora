@@ -25,12 +25,12 @@ class ContentItemSortType(StrEnum):
     CREATED = "CREATED"
 
 
-class ContentItemPageInput(BasePageInput):
-    sort_by: ContentItemSortType = ContentItemSortType.CREATED  # ty: ignore[incompatible-mutable-override]
+class ContentItemPageInput(BasePageInput[ContentItemSortType]):
+    sort_by: ContentItemSortType = ContentItemSortType.CREATED
 
 
-class UserPageInput(BasePageInput):
-    sort_by: UserSortType = UserSortType.EMAIL  # ty: ignore[incompatible-mutable-override]
+class UserPageInput(BasePageInput[UserSortType]):
+    sort_by: UserSortType = UserSortType.EMAIL
 
 
 USER_PAGINATION_CONFIG = PaginationConfig(
