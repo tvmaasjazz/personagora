@@ -56,10 +56,12 @@ railway config plan --environment staging    # preview a railway.ts change; chan
 railway config apply --environment staging   # apply it, after Tyler has read the plan
 ```
 
-Before committing, run `ruff check` and `ruff format --check` for backend changes, and
-`npm run fmt:check`, `npm run lint`, `npm run build` and `npm run test` for frontend
-changes, and `npm run test:e2e` when a flow or a page it walks changed. `pytest` must
-pass before the PR is ready to merge (see Pull requests).
+`git commit` runs `.claude/hooks/check-before-commit.sh` first: `ruff check` and
+`ruff format --check` for backend changes, and `npm run fmt:check`, `lint`, `build`
+and `test` for frontend changes. It blocks the commit with their output when one
+fails. Don't run those checks yourself before committing; commit, and fix what a block
+reports. Run `npm run test:e2e` yourself when a flow or a page it walks changed.
+`pytest` must pass before the PR is ready to merge (see Pull requests).
 
 ### Commands for Tyler to run
 
@@ -143,7 +145,7 @@ Split work across parallel agents only along files they don't share.
   write the contract first (placement, names, signatures, `Input`/`Result` classes,
   exceptions) and give both agents the identical text. One agent owns each shared
   wiring file (`app_factory.py`, `core/dependencies.py`, `orm/__init__.py`).
-  Afterwards, check the calls match the contract, then run ruff and import the app.
+  Afterwards, check the calls match the contract, then import the app.
 - **Tests.** One `be-test-writer` adds the shared factories, stubs and fixtures first.
   Then two or three run in parallel on separate test files, each running only its
   own files: never the full suite, never `pytest -m migration`, since they share the
@@ -156,18 +158,18 @@ Split work across parallel agents only along files they don't share.
   run in parallel, split by page. Each owns its pages in `routes/`, replacing their
   stubs, and the components only those pages use. It edits nothing else, and gets the
   shared layer's file list and exports as its contract. Each formats and lints only
-  its own files (`react-coder.md` › Commands). Run `fmt`, `lint` and `build` once at
-  the end.
+  its own files (`react-coder.md` › Commands). Run `npm run fmt` once at the end; the
+  commit runs the checks.
 - **Frontend tests.** `fe-test-writer` agents split by test file, one kind each (unit
   or end-to-end), and each runs only its own files. End-to-end runs share the dev
   database and the e2e dev server, so a flow that fails on another writer's data is
-  rerun alone before it's called a bug. Run `npm run test` and `npm run test:e2e` once
-  at the end.
+  rerun alone before it's called a bug. Run `npm run test:e2e` once at the end; the
+  commit runs the unit tests.
 
 ## Pull requests
 
-Open the PR for review as soon as the code is written and `ruff check` passes, before
-tests and the docs audit. Tests, then audit fixes, land afterwards as separate commits
+Open the PR for review as soon as the code is written and committed, before tests and
+the docs audit. Tests, then audit fixes, land afterwards as separate commits
 on the same PR. Until they do, the PR description says what's still to come and which
 existing tests fail.
 
