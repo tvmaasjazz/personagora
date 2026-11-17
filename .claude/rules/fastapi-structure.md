@@ -21,7 +21,8 @@ backend/
 │   │                    #   services/, utils/
 │   ├── database/        # BaseOrm, session factory, orm/: see database.md;
 │   │                    #   pagination_config.py, results.py, services/ (PaginationService),
-│   │                    #   utils/ (DatabaseClockUtils, PaginationQueryUtils)
+│   │                    #   utils/ (DatabaseClockUtils, DatabaseResultUtils,
+│   │                    #   PaginationQueryUtils)
 │   └── <domain>/        # services.py or services/, inputs.py, results.py, settings.py,
 │                        #   types.py, constants.py; as needed: exceptions.py, utils/,
 │                        #   after_response_tasks.py; LLM work: see langgraph.md
