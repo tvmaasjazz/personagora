@@ -924,7 +924,7 @@ export interface components {
          * EnvironmentType
          * @enum {string}
          */
-        EnvironmentType: "DEVELOPMENT" | "TEST" | "PRODUCTION";
+        EnvironmentType: "DEVELOPMENT" | "TEST" | "STAGING" | "PRODUCTION";
         /** GenerateBlogPostDto */
         GenerateBlogPostDto: {
             /** Prompt Text */
@@ -1004,6 +1004,8 @@ export interface components {
             /** App Name */
             app_name: string;
             environment: components["schemas"]["EnvironmentType"];
+            /** Client Ip */
+            client_ip: string;
         };
         /**
          * HealthStatusType
