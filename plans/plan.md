@@ -512,26 +512,29 @@ generate-text run lease, handoff and drain already cover runs a redeploy stops.
   Postgres's connection limit. SQLAlchemy's default, 5 plus 10 overflow, is 15 per
   worker: 30 for two instances, 60 while a deploy overlaps the old ones, under
   Postgres's default of 100. Revisit before adding an instance
-- [ ] Secrets (API keys, the database URL) only in Railway variables
+- [x] Secrets (API keys, the database URL) only in Railway variables
 - [x] The frontend's server forwarding `/api/*` to the API over the private network,
   so the browser stays on one origin with no CORS (`deploy.md` › How the browser
   reaches the API)
-- [ ] Google sign-in's redirect URI on each environment's frontend domain
-- [ ] During a running generation, hit `/health` repeatedly; it should answer in
-  milliseconds
+- [x] Google sign-in's redirect URI on each environment's frontend domain
+- [ ] During a running generation on staging, hit `/health` repeatedly; it should
+  answer in milliseconds
 - [ ] Check STRONG's `gpt-5.6-sol` price in `model_pricing` ($4 / $20) against OpenAI's
   page: sources list it at $5 / $30, with $4 / $20 as a promotion
 - [ ] Check once that Safari keeps the session cookie past 7 days. The cookie is set on
   the frontend's own domain, which should keep it clear of Safari's cap on cookies
   from a subdomain whose IP differs from the main site's
-- [ ] Check on staging that `/health` shows your own IP through Cloudflare, and that a
+- [x] Check on staging that `/health` shows your own IP through Cloudflare, and that a
   request sent around Cloudflare with a made-up `CF-Connecting-IP` gets its real
   one, since signed-out views are counted by it (item 8)
 
 ### 13. Initial deploy
 
-- [ ] Stand up staging, then production, as `deploy.md` › Steps for staging lists
-- [ ] Give Tyler's user the admin role, and grant it credits
+- [x] Stand up staging, as `deploy.md` › Steps for staging lists
+- [ ] Stand up production (`deploy.md` › Production)
+- [x] Give Tyler's user the admin role on staging
+- [ ] Grant it credits on staging, then generate a few posts there for the checks in 12
+- [ ] The same admin role and credits on production
 - [ ] Send the first invite links
 
 ## Phase 2 — Security, idempotency and visibility
