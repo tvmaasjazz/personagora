@@ -2,6 +2,7 @@ import os
 import re
 from typing import cast
 
+from langgraph.checkpoint.memory import InMemorySaver
 from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
@@ -51,6 +52,15 @@ async def test_lifespan_closes_redis_client_on_shutdown() -> None:
         await redis_client.connection_pool.release(redis_connection)
 
     assert not redis_connection.is_connected
+
+
+async def test_lifespan_memory_checkpointer_keeps_graph_state_in_memory() -> None:
+    fastapi_app = create_app()
+
+    async with fastapi_app.router.lifespan_context(fastapi_app):
+        graph_checkpointer = fastapi_app.state.graph_checkpointer
+
+    assert isinstance(graph_checkpointer, InMemorySaver)
 
 
 def test_build_worker_id_uses_truncated_replica_id_and_pid() -> None:
