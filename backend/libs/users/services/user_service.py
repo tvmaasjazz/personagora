@@ -1,13 +1,13 @@
 from decimal import Decimal
-from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import CursorResult, insert, select, update
+from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from libs.core.exceptions import ForbiddenException, NotFoundException
 from libs.credits.utils import CreditUtils
 from libs.database.orm import RoleOrm, UserAuthProviderOrm, UserOrm
+from libs.database.utils import DatabaseResultUtils
 from libs.permissions.types import RoleType
 from libs.users.exceptions import UserEmailTakenException, UserInactiveException
 from libs.users.inputs import FindOrCreateUserFromAuthProviderInput
@@ -79,7 +79,8 @@ class UserService:
             )
         )
         user_role_update_result = await self._db_session.execute(user_role_update)
-        return cast(CursorResult[Any], user_role_update_result).rowcount == 1
+        user_role_row_count = DatabaseResultUtils.get_row_count(user_role_update_result)
+        return user_role_row_count == 1
 
     async def _find_user_from_auth_provider(
         self,
