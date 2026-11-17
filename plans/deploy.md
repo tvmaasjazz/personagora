@@ -56,6 +56,31 @@ the same four services:
   module (`lifespan.py`). Railway's Redis template is 8.2.
 - **Postgres** only needs the `citext` extension, which the migrations create.
 
+### Database access
+
+Postgres has no public proxy in any environment. A tool like TablePlus reaches it
+through the Railway CLI's SSH tunnel, which needs only a Railway login and an SSH key
+registered with the account:
+
+```bash
+railway connect Postgres --environment staging --tunnel-only --port 6543
+railway connect Postgres --environment production --tunnel-only --port 6544
+```
+
+- **The tunnel prints the connection details** (host `127.0.0.1`, the port, user,
+  password, database) and stays open until Ctrl+C. Each environment keeps its own
+  fixed port, so a saved TablePlus connection works every time and both can be open
+  at once. The TablePlus connection is plain PostgreSQL, not "Over SSH".
+- **Always pass `--environment`,** rather than relying on the folder's linked one.
+- **The SSH key is Railway's own,** `~/.ssh/railway_ed25519`, registered to Tyler's
+  account rather than the workspace, so removing it touches nothing else.
+- **`railway login` must grant the personal workspace full access.** Without it,
+  `connect` and `railway ssh` answer "You do not have access to this resource", while
+  `status` and `config plan` still work.
+- **Production's TablePlus connection uses Safe Mode** and the red status colour.
+- `railway ssh --service api --environment <name> -- <command>` runs a command in an
+  `api` instance, such as `python -m scripts.grant_credits`.
+
 ### How the browser reaches the API
 
 The browser only ever talks to the frontend's domain. `web` serves the built app and
