@@ -53,7 +53,7 @@ notes: error cases, status codes, limits.
 
 Report as a list: files created, decisions you made where the notes were thin, and
 anything the rules files didn't cover. Include the schema-coder's Verification and
-Follow-up sections, the fastapi-coder's Judgement calls and Contradictions sections,
+Follow-up sections, the fastapi-coder's Checks, Judgement calls and Contradictions sections,
 and the be-test-writer's Coverage, Test run, and Source problems sections. If a quirk of this domain conflicts with an
 existing rule, say so and propose wording — don't quietly deviate.
 

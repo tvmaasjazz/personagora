@@ -66,7 +66,8 @@ railway config apply --environment staging   # apply it, after Tyler has read th
 `ruff format --check` and `ty check` for backend changes, and `npm run fmt:check`,
 `lint`, `build` and `test` for frontend changes. It blocks the commit with their output
 when one fails. Don't run those checks yourself before committing; commit, and fix what a block
-reports. Run `npm run test:e2e` yourself when a flow or a page it walks changed.
+reports. Agents that write code still run them on their own files while they work (each
+agent's commands section), and reviewers don't rerun them. Run `npm run test:e2e` yourself when a flow or a page it walks changed.
 `pytest` must pass before the PR is ready to merge (see Pull requests).
 
 ### Commands for Tyler to run

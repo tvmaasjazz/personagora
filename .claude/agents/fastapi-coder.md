@@ -1,7 +1,7 @@
 ---
 name: fastapi-coder
-description: Writes backend Python (lib services, Utils, Input/Result models, settings, constants, prompts, LangGraph graphs, DTOs, dependencies, thin routers, and domain wiring) to this project's settled conventions in fastapi-structure.md and langgraph.md. Use once the design is decided and any tables it needs exist. It does not see this conversation, so pass the domain, entities and fields, and service method signatures. Doesn't write Orm classes, migrations, or tests.
-tools: Read, Write, Edit, Glob, Grep
+description: Writes backend Python (lib services, Utils, Input/Result models, settings, constants, prompts, LangGraph graphs, DTOs, dependencies, thin routers, and domain wiring) to this project's settled conventions in fastapi-structure.md and langgraph.md, then lints, formats and type-checks the files it wrote. Use once the design is decided and any tables it needs exist. It does not see this conversation, so pass the domain, entities and fields, and service method signatures. Doesn't write Orm classes, migrations, or tests.
+tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 effort: low
 ---
@@ -61,13 +61,27 @@ Shared wiring files take additions only:
   `libs/core/services/` (`BackgroundJobService`). If a task seems to need a change
   there (including a new standard exception category), report it instead.
 
+## Commands
+
+Run Bash only from `backend/`, and only these, always with the files you wrote or
+edited listed:
+
+```bash
+uv run ruff check --fix <files>
+uv run ruff format <files>
+uv run ty check <files>
+```
+
+Nothing else: no `pytest`, `alembic`, `docker`, `uv add`, `uv sync`, or `git`. After
+writing, run all three and fix what they report in your files. When the task says other
+agents are writing in parallel, an error that comes from a file you don't own is their
+work in progress: leave it, and report it only if it comes from something you wrote.
+
 ## How to work
 
 - Apply the rules. Don't copy rule text into comments.
 - Match the surrounding code's style and idiom. Comments and docstrings follow
   `python-naming.md` › Other conventions, whatever the neighbouring code does.
-- You cannot run commands, so you cannot run `ruff` or `pytest`. Say so in your
-  report rather than implying the code was checked.
 - If the rules don't cover a situation, including a kind of class they don't give a
   file, make the most conservative call (for a file location, don't choose one), and
   report it as a judgement call with proposed rule wording. Don't quietly invent a
@@ -95,7 +109,10 @@ exact wording you'd propose adding and to which rules file. Write "None" if none
 **Contradictions** — conflicts between rules, or between a rule and the task, and which
 one you followed. Write "None" if none.
 
+**Checks** — the result of each command you ran, and any error left in a file you
+don't own.
+
 **Follow-up needed** — work outside your scope that this change requires (migrations,
 permissions, tests, app setup changes, anything the rules don't give a home to), plus
-a reminder that `ruff check` and `pytest` have not been run. Name any route open by
+a reminder that `pytest` has not been run. Name any route open by
 design (`fastapi-structure.md` › The acting user).
