@@ -459,6 +459,10 @@ access check skips the read: its `WHERE` is the lookup, and a row count of 0 rai
 `NotFoundException`. The soft-delete rule only filters selects, so on a table whose
 rows are soft-deleted that `WHERE` adds `<Orm>.deleted_at.is_(None)`.
 
+A write's row count comes from `DatabaseResultUtils.get_row_count(<x>_result)`, read
+once into `<x>_row_count` right after the `execute()`. Never `.rowcount` or a cast at
+the call site.
+
 **A write that moves a row to a new status, or claims it, names the statuses it moves
 from in its `WHERE`**, so a late write from a job that's being stopped can't undo a
 newer one. A row count of 0 then means the row moved on, which is not an error; when
