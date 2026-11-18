@@ -12,7 +12,7 @@ from libs.llm.inputs import LlmSystemPromptInput
 from libs.llm.types import LlmType
 from tests.factories.generate_text import build_generate_text_state
 from tests.factories.llm import build_llm_completion_result
-from tests.stubs.generate_text import GenerateTextPromptStub
+from tests.stubs.generate_text import GenerateTextOutputFormatStub, GenerateTextPromptStub
 from tests.stubs.llm import LlmServiceStub
 
 VALID_BODY_TEXT = "# Sourdough Starters\n\nFeed it daily."
@@ -266,16 +266,7 @@ async def test_build_generate_node_max_output_format_retries_zero_calls_once_the
     assert len(llm_service_stub.complete_inputs) == 1
 
 
-@pytest.mark.parametrize(
-    "required_variable_names",
-    [
-        pytest.param(frozenset({"format_rules"}), id="with_required_names"),
-        pytest.param(frozenset[str](), id="without_required_names"),
-    ],
-)
-async def test_build_generate_node_requires_the_names_its_prompt_lists(
-    required_variable_names: frozenset[str],
-) -> None:
+async def test_build_generate_node_output_format_adds_required_format_rules() -> None:
     llm_service_stub = LlmServiceStub()
     llm_service_stub.complete_result = build_llm_completion_result(content=VALID_BODY_TEXT)
     generate_text_node_service = GenerateTextNodeService(
@@ -283,9 +274,37 @@ async def test_build_generate_node_requires_the_names_its_prompt_lists(
     )
     generate_text_prompt_stub = GenerateTextPromptStub()
     generate_text_prompt_stub.build_generate_prompt_result = BuildPromptResult(
+        system_prompt_template="Hi {{name}}. {{format_rules}}",
+        system_prompt_variables={"name": "Ada"},
+        user_prompt="Write.",
+    )
+    generate_node = generate_text_node_service.build_generate_node(
+        GenerateTextNodeType.GENERATE_DRAFT,
+        "test-config-key",
+        LlmType.GPT_5_6_SOL,
+        generate_text_prompt_stub,
+        GenerateTextOutputFormatStub(),
+    )
+    generate_text_state = build_generate_text_state()
+
+    await generate_node(generate_text_state)
+
+    assert llm_service_stub.complete_inputs[0].system_prompt == LlmSystemPromptInput(
+        default_template="Hi {{name}}. {{format_rules}}",
+        variables={"name": "Ada", "format_rules": "Stub format rules."},
+        required_variable_names=frozenset({"format_rules"}),
+    )
+
+
+async def test_build_generate_node_without_output_format_requires_no_variables() -> None:
+    llm_service_stub = LlmServiceStub()
+    generate_text_node_service = GenerateTextNodeService(
+        llm_service=llm_service_stub, generate_text_settings=GenerateTextSettings()
+    )
+    generate_text_prompt_stub = GenerateTextPromptStub()
+    generate_text_prompt_stub.build_generate_prompt_result = BuildPromptResult(
         system_prompt_template="Hi {{name}}.",
         system_prompt_variables={"name": "Ada"},
-        required_system_prompt_variable_names=required_variable_names,
         user_prompt="Write.",
     )
     generate_node = generate_text_node_service.build_generate_node(
@@ -302,20 +321,11 @@ async def test_build_generate_node_requires_the_names_its_prompt_lists(
     assert llm_service_stub.complete_inputs[0].system_prompt == LlmSystemPromptInput(
         default_template="Hi {{name}}.",
         variables={"name": "Ada"},
-        required_variable_names=required_variable_names,
+        required_variable_names=frozenset(),
     )
 
 
-@pytest.mark.parametrize(
-    "required_variable_names",
-    [
-        pytest.param(frozenset({"format_rules"}), id="with_required_names"),
-        pytest.param(frozenset[str](), id="without_required_names"),
-    ],
-)
-async def test_build_rewrite_node_requires_the_names_its_prompt_lists(
-    required_variable_names: frozenset[str],
-) -> None:
+async def test_build_rewrite_node_output_format_adds_required_format_rules() -> None:
     llm_service_stub = LlmServiceStub()
     llm_service_stub.complete_result = build_llm_completion_result(content=VALID_BODY_TEXT)
     generate_text_node_service = GenerateTextNodeService(
@@ -323,9 +333,41 @@ async def test_build_rewrite_node_requires_the_names_its_prompt_lists(
     )
     generate_text_prompt_stub = GenerateTextPromptStub()
     generate_text_prompt_stub.build_rewrite_prompt_result = BuildPromptResult(
+        system_prompt_template="Hi {{name}}. {{format_rules}}",
+        system_prompt_variables={"name": "Ada"},
+        user_prompt="Rewrite.",
+    )
+    rewrite_node = generate_text_node_service.build_rewrite_node(
+        GenerateTextNodeType.REWRITE_DRAFT,
+        "test-config-key",
+        LlmType.GPT_5_6_SOL,
+        GenerateTextNodeType.REVIEW_DRAFT,
+        generate_text_prompt_stub,
+        GenerateTextOutputFormatStub(),
+    )
+    generate_text_state = build_generate_text_state(
+        step_outputs={"GENERATE_DRAFT": "A draft."},
+        step_feedback={"REVIEW_DRAFT": "Make it shorter."},
+    )
+
+    await rewrite_node(generate_text_state)
+
+    assert llm_service_stub.complete_inputs[0].system_prompt == LlmSystemPromptInput(
+        default_template="Hi {{name}}. {{format_rules}}",
+        variables={"name": "Ada", "format_rules": "Stub format rules."},
+        required_variable_names=frozenset({"format_rules"}),
+    )
+
+
+async def test_build_rewrite_node_without_output_format_requires_no_variables() -> None:
+    llm_service_stub = LlmServiceStub()
+    generate_text_node_service = GenerateTextNodeService(
+        llm_service=llm_service_stub, generate_text_settings=GenerateTextSettings()
+    )
+    generate_text_prompt_stub = GenerateTextPromptStub()
+    generate_text_prompt_stub.build_rewrite_prompt_result = BuildPromptResult(
         system_prompt_template="Hi {{name}}.",
         system_prompt_variables={"name": "Ada"},
-        required_system_prompt_variable_names=required_variable_names,
         user_prompt="Rewrite.",
     )
     rewrite_node = generate_text_node_service.build_rewrite_node(
@@ -346,7 +388,7 @@ async def test_build_rewrite_node_requires_the_names_its_prompt_lists(
     assert llm_service_stub.complete_inputs[0].system_prompt == LlmSystemPromptInput(
         default_template="Hi {{name}}.",
         variables={"name": "Ada"},
-        required_variable_names=required_variable_names,
+        required_variable_names=frozenset(),
     )
 
 

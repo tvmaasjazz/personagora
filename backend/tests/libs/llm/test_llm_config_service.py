@@ -69,8 +69,6 @@ async def test_resolve_config_served_config_returns_served_model_and_prompt() ->
         config_key="test-config-key",
         model_name="gpt-6.2-sol",
         messages=[LlmConfigMessageResult(role="system", content="Served for {{name}}.")],
-        variation_key="variation-a",
-        variation_version=7,
     )
     llm_config_source_service_stub.get_config_result = llm_config_source_result
     llm_config_service = _build_llm_config_service(llm_config_source_service_stub)
@@ -89,8 +87,6 @@ async def test_resolve_config_served_config_returns_served_model_and_prompt() ->
         config_key="test-config-key",
         model_settings=Gpt62SolLlmModelSettings(),
         system_prompt="Served for Ada.",
-        variation_key="variation-a",
-        variation_version=7,
         llm_config_source_result=llm_config_source_result,
     )
 
@@ -282,26 +278,3 @@ async def test_track_call_with_source_result_delegates_to_source() -> None:
     assert llm_config_source_service_stub.track_call_inputs == [
         (llm_config_source_result, auth_user)
     ]
-
-
-@pytest.mark.parametrize(
-    ("llm_type", "expected_model_name"),
-    [
-        pytest.param(LlmType.GPT_5_4_NANO, "gpt-5.4-nano", id="gpt_5_4_nano"),
-        pytest.param(LlmType.GPT_5_6_LUNA, "gpt-5.6-luna", id="gpt_5_6_luna"),
-        pytest.param(LlmType.GPT_5_6_TERRA, "gpt-5.6-terra", id="gpt_5_6_terra"),
-        pytest.param(LlmType.GPT_5_6_SOL, "gpt-5.6-sol", id="gpt_5_6_sol"),
-        pytest.param(LlmType.GPT_6_LUNA, "gpt-6-luna", id="gpt_6_luna"),
-        pytest.param(LlmType.GPT_6_1_TERRA, "gpt-6.1-terra", id="gpt_6_1_terra"),
-        pytest.param(LlmType.GPT_6_2_SOL, "gpt-6.2-sol", id="gpt_6_2_sol"),
-        pytest.param(LlmType.GPT_6_2_ASTRA, "gpt-6.2-astra", id="gpt_6_2_astra"),
-    ],
-)
-def test_get_model_settings_returns_the_types_model(
-    llm_type: LlmType, expected_model_name: str
-) -> None:
-    llm_config_service = _build_llm_config_service(LlmConfigSourceServiceStub())
-
-    model_settings = llm_config_service.get_model_settings(llm_type)
-
-    assert model_settings.model_name == expected_model_name

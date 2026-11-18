@@ -19,8 +19,6 @@ import httpx
 from dotenv import dotenv_values
 
 from apps.api.core.config import AppSettings
-from libs.llm.services import LlmConfigService
-from libs.llm.services.default_llm_config_source_service import DefaultLlmConfigSourceService
 from scripts.launchdarkly.llm_configs import LLM_CONFIG_DECLARATIONS, LlmConfigDeclaration
 
 API_BASE_URL = "https://app.launchdarkly.com/api/v2"
@@ -51,20 +49,13 @@ def _read_token() -> str:
     return launchdarkly_api_token
 
 
-def _fail(http_response: httpx.Response, action: str) -> None:
-    print(
-        f"FAILED {action}: HTTP {http_response.status_code}\n{http_response.text}", file=sys.stderr
-    )
-    raise SystemExit(1)
-
-
 def _expect(http_response: httpx.Response, action: str, ok_statuses: tuple[int, ...]) -> None:
     if http_response.status_code not in ok_statuses:
-        _fail(http_response, action)
-
-
-def _get_variations(config_body: dict[str, Any]) -> list[dict[str, Any]]:
-    return config_body.get("variations") or []
+        print(
+            f"FAILED {action}: HTTP {http_response.status_code}\n{http_response.text}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
 
 def _seed_config(
@@ -92,7 +83,7 @@ def _seed_config(
         config_body = http_response.json()
 
     # The variation
-    variations = _get_variations(config_body)
+    variations: list[dict[str, Any]] = config_body.get("variations") or []
     default_variation = next(
         (variation for variation in variations if variation.get("key") == VARIATION_KEY), None
     )
@@ -168,7 +159,7 @@ def _get_variation_id(variation_body: dict[str, Any]) -> str:
 def main() -> None:
     arguments = _parse_arguments()
     launchdarkly_api_token = _read_token()
-    llm_config_service = LlmConfigService(DefaultLlmConfigSourceService(), AppSettings().llm)
+    llm_settings = AppSettings().llm
     print(f"Seeding {len(LLM_CONFIG_DECLARATIONS)} configs in {arguments.environment}")
     with httpx.Client(
         base_url=API_BASE_URL,
@@ -176,9 +167,8 @@ def main() -> None:
         timeout=30,
     ) as http_client:
         for declaration in LLM_CONFIG_DECLARATIONS:
-            model_name = llm_config_service.get_model_settings(
-                declaration.default_llm_type
-            ).model_name
+            # The model's name is the one the code default runs on
+            model_name = llm_settings.get_model_settings(declaration.default_llm_type).model_name
             _seed_config(http_client, declaration, model_name, arguments.environment)
     print("Done")
 

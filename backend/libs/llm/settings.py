@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from libs.llm.types import LlmProviderType, LlmReasoningEffortType
+from libs.llm.types import LlmProviderType, LlmReasoningEffortType, LlmType
 
 ALL_REASONING_EFFORTS = frozenset(LlmReasoningEffortType)
 REASONING_EFFORTS_WITHOUT_NONE = ALL_REASONING_EFFORTS - {LlmReasoningEffortType.NONE}
@@ -124,3 +124,34 @@ class LlmSettings(BaseModel):
     max_retries: int = 2
     retry_base_delay_seconds: float = 1.0
     retry_max_delay_seconds: float = 20.0
+
+    def get_model_settings(self, llm_type: LlmType) -> LlmModelSettings:
+        """Returns the model's settings; NotImplementedError if the type has none."""
+        model_settings_by_llm_type: dict[LlmType, LlmModelSettings] = {
+            LlmType.GPT_5_4_NANO: self.gpt_5_4_nano,
+            LlmType.GPT_5_6_LUNA: self.gpt_5_6_luna,
+            LlmType.GPT_5_6_TERRA: self.gpt_5_6_terra,
+            LlmType.GPT_5_6_SOL: self.gpt_5_6_sol,
+            LlmType.GPT_6_LUNA: self.gpt_6_luna,
+            LlmType.GPT_6_1_TERRA: self.gpt_6_1_terra,
+            LlmType.GPT_6_2_SOL: self.gpt_6_2_sol,
+            LlmType.GPT_6_2_ASTRA: self.gpt_6_2_astra,
+        }
+        model_settings = model_settings_by_llm_type.get(llm_type)
+        if model_settings is None:
+            raise NotImplementedError(f"No model configured for {llm_type}")
+        return model_settings
+
+    def get_model_settings_by_model_name(
+        self, provider: LlmProviderType, model_name: str
+    ) -> LlmModelSettings | None:
+        """Returns the settings of the one model with this provider and name, else None."""
+        all_model_settings = [self.get_model_settings(llm_type) for llm_type in LlmType]
+        matching_model_settings = [
+            model_settings
+            for model_settings in all_model_settings
+            if model_settings.provider == provider and model_settings.model_name == model_name
+        ]
+        if len(matching_model_settings) != 1:
+            return None
+        return matching_model_settings[0]

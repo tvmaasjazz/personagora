@@ -171,21 +171,3 @@ def test_build_generate_prompt_renders_system_prompt_with_empty_persona_and_tone
         "Write an outline for a blog post: the sections it will cover, the key point each "
         "one makes, and the order they build in. Keep it a plan, not the prose itself."
     )
-
-
-def test_build_generate_prompt_lists_required_system_prompt_variable_names() -> None:
-    state = build_generate_text_state()
-
-    build_prompt_result = BlogPostOutlinePrompt().build_generate_prompt(state)
-
-    assert build_prompt_result.required_system_prompt_variable_names == frozenset()
-
-
-def test_build_rewrite_prompt_lists_required_system_prompt_variable_names() -> None:
-    state = build_generate_text_state()
-
-    build_prompt_result = BlogPostOutlinePrompt().build_rewrite_prompt(
-        state, "A draft.", "Make it shorter."
-    )
-
-    assert build_prompt_result.required_system_prompt_variable_names == frozenset()

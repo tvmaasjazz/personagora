@@ -15,7 +15,7 @@ user to approve it or send it back with feedback. The client polls the run to it
    every step under the run's identity.
 3. Each node pass writes a `psg_generate_text_step` row
    (`GenerateTextInstrumentationService`). Its LLM calls are logged to `psg_llm_call`; each
-   step passes its config key (`BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER`) and default
+   step passes its config key (declared in its `BlogPostStepConfig`) and default
    model, as `libs/llm/README.md` describes.
 4. Credits: `complete_step` prices the step's LLM cost and charges it through
    `GenerateTextCreditService.charge_step` in the same transaction; `fail_run` refunds

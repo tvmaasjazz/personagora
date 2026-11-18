@@ -94,8 +94,9 @@ class LaunchDarklyLlmConfigSourceService(BaseLlmConfigSourceService):
 
         # The provider name comes from the served config, so a config for another provider
         # is still tracked
+        provider_name = llm_config_source_result.source_payload["config"]["provider"]["name"]
         handler = self._launchdarkly_ai_sdk.create_handler(
-            (llm_config_source_result.source_payload["provider_name"], "messages"),
+            (provider_name, "messages"),
             run_call,
             capture_content=False,
         )

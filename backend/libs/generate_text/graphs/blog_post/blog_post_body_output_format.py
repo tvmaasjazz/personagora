@@ -33,6 +33,8 @@ SKIPPED_HEADING_LEVEL_MESSAGE = (
 class BlogPostBodyOutputFormat(BaseGenerateTextOutputFormat):
     """The Markdown shape a blog post body must follow."""
 
+    format_rules = BLOG_POST_BODY_FORMAT_RULES
+
     def normalize_output(self, output_text: str) -> str:
         """Strips a code fence wrapping the whole output, then surrounding whitespace."""
         unfenced_text = MarkdownUtils.strip_wrapping_code_fence(output_text)

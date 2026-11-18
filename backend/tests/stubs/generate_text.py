@@ -13,11 +13,13 @@ from libs.generate_text.graphs.generate_text_graph_builder_registry import (
     GenerateTextGraphBuilderRegistry,
 )
 from libs.generate_text.inputs import CreateGenerateTextRunInput
+from libs.generate_text.output_formats import BaseGenerateTextOutputFormat
 from libs.generate_text.prompts import BaseGenerateTextPrompt
 from libs.generate_text.results import (
     BuildPromptResult,
     CreateGenerateTextRunResult,
     FindGenerateTextRunByIdentityResult,
+    ValidateOutputResult,
 )
 from libs.generate_text.services.generate_text_run_handoff_queue_service import (
     GenerateTextRunHandoffQueueService,
@@ -34,6 +36,8 @@ from libs.generate_text.types import HumanDecisionType, TextType
 
 class GenerateTextPromptStub(BaseGenerateTextPrompt):
     """A Prompt double that returns fixed BuildPromptResults."""
+
+    system_prompt_template = "Stub system prompt."
 
     def __init__(self) -> None:
         self.build_generate_prompt_result = BuildPromptResult(
@@ -54,6 +58,21 @@ class GenerateTextPromptStub(BaseGenerateTextPrompt):
         self, state: GenerateTextState, previous_output: str, feedback_text: str
     ) -> BuildPromptResult:
         return self.build_rewrite_prompt_result
+
+    def _build_system_prompt_variables(self, state: GenerateTextState) -> dict[str, str]:
+        return {}
+
+
+class GenerateTextOutputFormatStub(BaseGenerateTextOutputFormat):
+    """An OutputFormat double with fixed rules whose validation passes unless told otherwise."""
+
+    format_rules = "Stub format rules."
+
+    def __init__(self) -> None:
+        self.validate_output_result = ValidateOutputResult(error_messages=[])
+
+    def validate_output(self, output_text: str) -> ValidateOutputResult:
+        return self.validate_output_result
 
 
 class GenerateTextGraphStub(CompiledStateGraph):

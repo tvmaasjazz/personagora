@@ -5,8 +5,9 @@ from libs.llm.settings import (
     Gpt56SolLlmModelSettings,
     Gpt62AstraLlmModelSettings,
     Gpt62SolLlmModelSettings,
+    LlmSettings,
 )
-from libs.llm.types import LlmReasoningEffortType
+from libs.llm.types import LlmProviderType, LlmReasoningEffortType, LlmType
 from tests.factories.llm import build_llm_model_settings
 
 
@@ -84,3 +85,64 @@ def test_llm_model_settings_positive_max_output_tokens_is_accepted() -> None:
     llm_model_settings = Gpt56SolLlmModelSettings(max_output_tokens=1)
 
     assert llm_model_settings.max_output_tokens == 1
+
+
+@pytest.mark.parametrize(
+    ("llm_type", "expected_model_name"),
+    [
+        pytest.param(LlmType.GPT_5_4_NANO, "gpt-5.4-nano", id="gpt_5_4_nano"),
+        pytest.param(LlmType.GPT_5_6_LUNA, "gpt-5.6-luna", id="gpt_5_6_luna"),
+        pytest.param(LlmType.GPT_5_6_TERRA, "gpt-5.6-terra", id="gpt_5_6_terra"),
+        pytest.param(LlmType.GPT_5_6_SOL, "gpt-5.6-sol", id="gpt_5_6_sol"),
+        pytest.param(LlmType.GPT_6_LUNA, "gpt-6-luna", id="gpt_6_luna"),
+        pytest.param(LlmType.GPT_6_1_TERRA, "gpt-6.1-terra", id="gpt_6_1_terra"),
+        pytest.param(LlmType.GPT_6_2_SOL, "gpt-6.2-sol", id="gpt_6_2_sol"),
+        pytest.param(LlmType.GPT_6_2_ASTRA, "gpt-6.2-astra", id="gpt_6_2_astra"),
+    ],
+)
+def test_get_model_settings_returns_the_types_model(
+    llm_type: LlmType, expected_model_name: str
+) -> None:
+    llm_settings = LlmSettings()
+
+    model_settings = llm_settings.get_model_settings(llm_type)
+
+    assert model_settings.model_name == expected_model_name
+
+
+def test_get_model_settings_returns_the_configured_value() -> None:
+    llm_settings = LlmSettings(gpt_6_2_sol=Gpt62SolLlmModelSettings(max_output_tokens=321))
+
+    model_settings = llm_settings.get_model_settings(LlmType.GPT_6_2_SOL)
+
+    assert model_settings == Gpt62SolLlmModelSettings(max_output_tokens=321)
+
+
+def test_get_model_settings_by_model_name_known_model_returns_its_settings() -> None:
+    llm_settings = LlmSettings(gpt_6_2_sol=Gpt62SolLlmModelSettings(max_output_tokens=321))
+
+    model_settings = llm_settings.get_model_settings_by_model_name(
+        LlmProviderType.OPENAI, "gpt-6.2-sol"
+    )
+
+    assert model_settings == Gpt62SolLlmModelSettings(max_output_tokens=321)
+
+
+def test_get_model_settings_by_model_name_other_provider_returns_none() -> None:
+    llm_settings = LlmSettings()
+
+    model_settings = llm_settings.get_model_settings_by_model_name(
+        LlmProviderType.ANTHROPIC, "gpt-6.2-sol"
+    )
+
+    assert model_settings is None
+
+
+def test_get_model_settings_by_model_name_unknown_model_returns_none() -> None:
+    llm_settings = LlmSettings()
+
+    model_settings = llm_settings.get_model_settings_by_model_name(
+        LlmProviderType.OPENAI, "gpt-4o-mini"
+    )
+
+    assert model_settings is None

@@ -1,8 +1,4 @@
-from libs.generate_text.types import (
-    GenerateTextNodeType,
-    GenerateTextRunStatusType,
-    GenerateTextStepTierType,
-)
+from libs.generate_text.types import GenerateTextRunStatusType
 
 # Key a text step's text is stored under in the JSONB output column
 STEP_OUTPUT_TEXT_KEY = "text"
@@ -45,21 +41,3 @@ FORMAT_RULES_VARIABLE_NAME = "format_rules"
 # LaunchDarkly use these names, so renaming one makes every served template fall back.
 PERSONA_SECTION_VARIABLE_NAME = "persona_section"
 TONE_AND_AUDIENCE_SECTION_VARIABLE_NAME = "tone_and_audience_section"
-
-# These keys must match the LaunchDarkly configs the seed script creates
-BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER: dict[
-    tuple[GenerateTextNodeType, GenerateTextStepTierType], str
-] = {
-    (
-        GenerateTextNodeType.GENERATE_OUTLINE,
-        GenerateTextStepTierType.STANDARD,
-    ): "blog-post-outline-standard",
-    (
-        GenerateTextNodeType.GENERATE_DRAFT,
-        GenerateTextStepTierType.STANDARD,
-    ): "blog-post-draft-standard",
-    (
-        GenerateTextNodeType.HUMANIZE,
-        GenerateTextStepTierType.STANDARD,
-    ): "blog-post-humanize-standard",
-}

@@ -13,6 +13,7 @@ from libs.llm.services.llm_call_service import LlmCallService
 from libs.llm.types import LlmCallReasonType, LlmCallStatusType, LlmProviderType
 from tests.factories.auth import build_auth_user
 from tests.factories.llm import (
+    build_get_llm_config_result,
     build_llm_completion_input,
     build_llm_model_settings,
     build_llm_provider_completion_result,
@@ -41,8 +42,9 @@ async def test_create_pending_llm_call_persists_pending_row_with_null_metrics(
             provider=LlmProviderType.ANTHROPIC, model_name="claude-test-model"
         ),
         system_prompt="Rendered system prompt.",
-        variation_key="pending-variation",
-        variation_version=3,
+        llm_config_source_result=build_get_llm_config_result(
+            variation_key="pending-variation", variation_version=3
+        ),
     )
 
     create_pending_llm_call_result = await llm_call_service.create_pending_llm_call(

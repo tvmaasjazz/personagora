@@ -1,6 +1,3 @@
-from libs.generate_text.graphs.blog_post.blog_post_body_output_format import (
-    BLOG_POST_BODY_FORMAT_RULES,
-)
 from libs.generate_text.graphs.blog_post.prompts import BlogPostDraftPrompt
 from libs.llm.utils import PromptTemplateUtils
 from tests.factories.generate_text import build_generate_text_state
@@ -17,18 +14,6 @@ EXPECTED_FORMAT_RULES = (
 )
 
 
-def test_build_generate_prompt_includes_format_rules_in_system_prompt() -> None:
-    state = build_generate_text_state()
-
-    build_prompt_result = BlogPostDraftPrompt().build_generate_prompt(state)
-
-    system_prompt = PromptTemplateUtils.render(
-        build_prompt_result.system_prompt_template,
-        build_prompt_result.system_prompt_variables,
-    )
-    assert BLOG_POST_BODY_FORMAT_RULES in system_prompt
-
-
 def test_build_generate_prompt_puts_persona_fields_in_system_prompt() -> None:
     state = build_generate_text_state(
         persona_name="Marta Quill",
@@ -42,7 +27,7 @@ def test_build_generate_prompt_puts_persona_fields_in_system_prompt() -> None:
 
     system_prompt = PromptTemplateUtils.render(
         build_prompt_result.system_prompt_template,
-        build_prompt_result.system_prompt_variables,
+        {**build_prompt_result.system_prompt_variables, "format_rules": EXPECTED_FORMAT_RULES},
     )
     assert "Marta Quill" in system_prompt
     assert "Writes about sourdough." in system_prompt
@@ -58,7 +43,7 @@ def test_build_generate_prompt_puts_tone_and_target_audience_in_system_prompt() 
 
     system_prompt = PromptTemplateUtils.render(
         build_prompt_result.system_prompt_template,
-        build_prompt_result.system_prompt_variables,
+        {**build_prompt_result.system_prompt_variables, "format_rules": EXPECTED_FORMAT_RULES},
     )
     assert "Playful" in system_prompt
     assert "Home bakers" in system_prompt
@@ -71,7 +56,7 @@ def test_build_generate_prompt_omits_empty_tone_and_target_audience() -> None:
 
     system_prompt = PromptTemplateUtils.render(
         build_prompt_result.system_prompt_template,
-        build_prompt_result.system_prompt_variables,
+        {**build_prompt_result.system_prompt_variables, "format_rules": EXPECTED_FORMAT_RULES},
     )
     assert "Tone:" not in system_prompt
     assert "Target audience:" not in system_prompt
@@ -142,7 +127,7 @@ def test_build_generate_prompt_renders_system_prompt_with_persona_and_tone() -> 
 
     system_prompt = PromptTemplateUtils.render(
         build_prompt_result.system_prompt_template,
-        build_prompt_result.system_prompt_variables,
+        {**build_prompt_result.system_prompt_variables, "format_rules": EXPECTED_FORMAT_RULES},
     )
     assert system_prompt == (
         "Write a complete blog post draft from the outline and brief provided. Write the "
@@ -170,7 +155,7 @@ def test_build_generate_prompt_renders_system_prompt_with_empty_persona_and_tone
 
     system_prompt = PromptTemplateUtils.render(
         build_prompt_result.system_prompt_template,
-        build_prompt_result.system_prompt_variables,
+        {**build_prompt_result.system_prompt_variables, "format_rules": EXPECTED_FORMAT_RULES},
     )
     assert system_prompt == (
         "Write a complete blog post draft from the outline and brief provided. Write the "
@@ -178,19 +163,21 @@ def test_build_generate_prompt_renders_system_prompt_with_empty_persona_and_tone
     )
 
 
-def test_build_generate_prompt_lists_required_system_prompt_variable_names() -> None:
+def test_build_generate_prompt_system_template_has_format_rules_placeholder() -> None:
     state = build_generate_text_state()
 
     build_prompt_result = BlogPostDraftPrompt().build_generate_prompt(state)
 
-    assert build_prompt_result.required_system_prompt_variable_names == frozenset({"format_rules"})
+    assert "{{format_rules}}" in build_prompt_result.system_prompt_template
+    assert "format_rules" not in build_prompt_result.system_prompt_variables
 
 
-def test_build_rewrite_prompt_lists_required_system_prompt_variable_names() -> None:
+def test_build_rewrite_prompt_system_template_has_format_rules_placeholder() -> None:
     state = build_generate_text_state()
 
     build_prompt_result = BlogPostDraftPrompt().build_rewrite_prompt(
         state, "A draft.", "Make it shorter."
     )
 
-    assert build_prompt_result.required_system_prompt_variable_names == frozenset({"format_rules"})
+    assert "{{format_rules}}" in build_prompt_result.system_prompt_template
+    assert "format_rules" not in build_prompt_result.system_prompt_variables

@@ -2,16 +2,16 @@ import asyncio
 import os
 import secrets
 import socket
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable
 from contextlib import asynccontextmanager
 
 import launchdarkly_ai_server
 import structlog
 from fastapi import FastAPI
 from httpx import AsyncClient
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.redis.aio import AsyncRedisSaver
-from launchdarkly_ai_server import init_client
 from ldclient import Config, LDClient
 from openai import AsyncOpenAI
 from redis.asyncio import Redis
@@ -52,7 +52,7 @@ async def connect_launchdarkly(app_settings: AppSettings) -> LDClient:
     if not launchdarkly_client.is_initialized():
         # Steps use their code defaults until the client connects in the background
         logger.warning("launchdarkly_not_connected")
-    await init_client(client=launchdarkly_client)
+    await launchdarkly_ai_server.init_client(client=launchdarkly_client)
     return launchdarkly_client
 
 
@@ -62,6 +62,32 @@ async def disconnect_launchdarkly(launchdarkly_client: LDClient) -> None:
     # closed and returns at once
     await asyncio.to_thread(launchdarkly_client.close)
     await launchdarkly_ai_server.shutdown()
+
+
+async def connect_launchdarkly_if_enabled(app_settings: AppSettings) -> LDClient | None:
+    """Connects to LaunchDarkly when it's enabled, else returns None."""
+    if not app_settings.launchdarkly.is_enabled:
+        return None
+    return await connect_launchdarkly(app_settings)
+
+
+async def set_up_graph_checkpointer(
+    app_settings: AppSettings, redis_client: Redis
+) -> BaseCheckpointSaver:
+    """Returns the graph checkpointer the settings choose, set up and ready."""
+    if app_settings.generate_text.checkpointer is not GraphCheckpointerType.REDIS:
+        return InMemorySaver()
+    # Redis only indexes database 0, so on any other database its setup refuses to create
+    # the index and the app stops here
+    graph_checkpointer = AsyncRedisSaver(
+        redis_client=redis_client,
+        ttl={
+            "default_ttl": app_settings.generate_text.checkpoint_ttl_minutes,
+            "refresh_on_read": True,
+        },
+    )
+    await graph_checkpointer.asetup()
+    return graph_checkpointer
 
 
 @asynccontextmanager
@@ -81,26 +107,14 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None]:
     fastapi_app.state.http_client = http_client
     fastapi_app.state.openai_client = openai_client
 
-    # Set up the graph checkpointer. Redis only indexes database 0, so on any other
-    # database its setup refuses to create the index and the app stops here
+    # Set up the graph checkpointer and connect to LaunchDarkly, which don't depend on
+    # each other
     is_redis_checkpointer = app_settings.generate_text.checkpointer is GraphCheckpointerType.REDIS
-    if is_redis_checkpointer:
-        graph_checkpointer = AsyncRedisSaver(
-            redis_client=redis_client,
-            ttl={
-                "default_ttl": app_settings.generate_text.checkpoint_ttl_minutes,
-                "refresh_on_read": True,
-            },
-        )
-        await graph_checkpointer.asetup()
-        fastapi_app.state.graph_checkpointer = graph_checkpointer
-    else:
-        fastapi_app.state.graph_checkpointer = InMemorySaver()
-
-    # Connect to LaunchDarkly
-    launchdarkly_client = None
-    if app_settings.launchdarkly.is_enabled:
-        launchdarkly_client = await connect_launchdarkly(app_settings)
+    graph_checkpointer, launchdarkly_client = await asyncio.gather(
+        set_up_graph_checkpointer(app_settings, redis_client),
+        connect_launchdarkly_if_enabled(app_settings),
+    )
+    fastapi_app.state.graph_checkpointer = graph_checkpointer
 
     logger.info(
         "api_started",
@@ -143,11 +157,14 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None]:
         if event_loop_monitor_task is not None:
             event_loop_monitor_task.cancel()
             await asyncio.gather(event_loop_monitor_task, return_exceptions=True)
+        # Close the clients and the engine together
+        close_awaitables: list[Awaitable[None]] = [
+            http_client.aclose(),
+            redis_client.aclose(),
+            db_engine.dispose(),
+            openai_client.close(),
+        ]
         if launchdarkly_client is not None:
-            await disconnect_launchdarkly(launchdarkly_client)
-        # Close the clients and the engine
-        await http_client.aclose()
-        await redis_client.aclose()
-        await db_engine.dispose()
-        await openai_client.close()
+            close_awaitables.append(disconnect_launchdarkly(launchdarkly_client))
+        await asyncio.gather(*close_awaitables)
         logger.info("api_stopped", app_name=app_settings.app_name)

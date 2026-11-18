@@ -19,20 +19,12 @@ from apps.api.core.config import AppSettings
 from apps.api.core.dependencies import build_llm_config_source_service
 from apps.api.lifespan import connect_launchdarkly, disconnect_launchdarkly
 from libs.auth.results import AuthUser
-from libs.generate_text.constants import BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER
-from libs.generate_text.graphs.blog_post.prompts.blog_post_draft_prompt import BlogPostDraftPrompt
-from libs.generate_text.graphs.blog_post.prompts.blog_post_humanize_prompt import (
-    BlogPostHumanizePrompt,
-)
-from libs.generate_text.graphs.blog_post.prompts.blog_post_outline_prompt import (
-    BlogPostOutlinePrompt,
-)
-from libs.generate_text.prompts import BaseGenerateTextPrompt
+from libs.generate_text.graphs.blog_post.step_config import BLOG_POST_STEP_CONFIGS
 from libs.generate_text.states import GenerateTextState
-from libs.generate_text.types import GenerateTextNodeType, GenerateTextStepTierType
-from libs.llm.inputs import LlmCompletionInput, LlmSystemPromptInput
+from libs.generate_text.types import GenerateTextStepTierType
+from libs.generate_text.utils import GenerateTextPromptUtils
+from libs.llm.inputs import LlmCompletionInput
 from libs.llm.services import LlmConfigService
-from libs.llm.types import LlmType
 from libs.permissions.types import RoleType
 
 SAMPLE_IDENTITY = "00000000-0000-4000-8000-000000000001"
@@ -90,30 +82,19 @@ async def _check() -> None:
 
     state = _build_sample_state(auth_user)
     step_tier = GenerateTextStepTierType.STANDARD
-    step_settings = app_settings.generate_text.blog_post
-    outline_llm_type = step_settings.outline.standard
-    draft_llm_type = step_settings.draft.standard
-    humanize_llm_type = step_settings.humanize.standard
-    steps: list[tuple[GenerateTextNodeType, BaseGenerateTextPrompt, LlmType]] = [
-        (GenerateTextNodeType.GENERATE_OUTLINE, BlogPostOutlinePrompt(), outline_llm_type),
-        (GenerateTextNodeType.GENERATE_DRAFT, BlogPostDraftPrompt(), draft_llm_type),
-        (GenerateTextNodeType.HUMANIZE, BlogPostHumanizePrompt(), humanize_llm_type),
-    ]
     try:
-        for node_type, prompt, default_llm_type in steps:
-            config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[(node_type, step_tier)]
-            build_prompt_result = prompt.build_generate_prompt(state)
+        for step_config in BLOG_POST_STEP_CONFIGS:
+            config_key = step_config.llm_config_key_by_tier[step_tier]
+            default_llm_type = step_config.read_standard_llm_type(app_settings.generate_text)
+            build_prompt_result = step_config.prompt.build_generate_prompt(state)
+            system_prompt_input = GenerateTextPromptUtils.build_system_prompt_input(
+                build_prompt_result, step_config.output_format
+            )
             llm_completion_input = LlmCompletionInput(
                 config_key=config_key,
                 default_llm_type=default_llm_type,
                 purpose="llm_config_check",
-                system_prompt=LlmSystemPromptInput(
-                    default_template=build_prompt_result.system_prompt_template,
-                    variables=build_prompt_result.system_prompt_variables,
-                    required_variable_names=(
-                        build_prompt_result.required_system_prompt_variable_names
-                    ),
-                ),
+                system_prompt=system_prompt_input,
                 user_prompt=build_prompt_result.user_prompt,
             )
             resolve_llm_config_result = await llm_config_service.resolve_config(

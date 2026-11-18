@@ -96,16 +96,12 @@ def build_resolve_llm_config_result(
     config_key: str = "test-config-key",
     model_settings: LlmModelSettings | None = None,
     system_prompt: str = "You are a helpful assistant.",
-    variation_key: str | None = None,
-    variation_version: int | None = None,
     llm_config_source_result: GetLlmConfigResult | None = None,
 ) -> ResolveLlmConfigResult:
     return ResolveLlmConfigResult(
         config_key=config_key,
         model_settings=build_llm_model_settings() if model_settings is None else model_settings,
         system_prompt=system_prompt,
-        variation_key=variation_key,
-        variation_version=variation_version,
         llm_config_source_result=llm_config_source_result,
     )
 

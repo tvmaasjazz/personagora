@@ -68,6 +68,18 @@ class ResolveLlmConfigResult(BaseModel):
     model_settings: LlmModelSettings
     system_prompt: str
     # None when the code default is used
-    variation_key: str | None
-    variation_version: int | None
     llm_config_source_result: GetLlmConfigResult | None
+
+    @property
+    def variation_key(self) -> str | None:
+        """Returns the served variation's key, None when the code default is used."""
+        if self.llm_config_source_result is None:
+            return None
+        return self.llm_config_source_result.variation_key
+
+    @property
+    def variation_version(self) -> int | None:
+        """Returns the served variation's version, None when the code default is used."""
+        if self.llm_config_source_result is None:
+            return None
+        return self.llm_config_source_result.variation_version

@@ -42,7 +42,6 @@ def test_parse_config_well_formed_payload_returns_config_in_our_types() -> None:
                 "messages": [{"role": "system", "content": "Served."}],
             },
             "meta": {"variationKey": "variation-a", "version": 3},
-            "provider_name": "OpenAI",
         },
     )
 
@@ -85,8 +84,8 @@ def test_parse_config_reasoning_effort_in_any_case_is_parsed(
 @pytest.mark.parametrize(
     ("payload_fields", "expected_reason"),
     [
-        pytest.param({"has_config": False}, "config_or_meta_missing", id="config_missing"),
-        pytest.param({"has_meta": False}, "config_or_meta_missing", id="meta_missing"),
+        pytest.param({"has_config": False}, "field_missing_or_wrong_type", id="config_missing"),
+        pytest.param({"has_meta": False}, "field_missing_or_wrong_type", id="meta_missing"),
         pytest.param(
             {"model_name": 5}, "field_missing_or_wrong_type", id="model_name_not_a_string"
         ),

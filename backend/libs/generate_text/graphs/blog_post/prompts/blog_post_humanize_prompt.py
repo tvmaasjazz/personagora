@@ -1,10 +1,6 @@
 from libs.generate_text.constants import (
-    FORMAT_RULES_VARIABLE_NAME,
     PERSONA_SECTION_VARIABLE_NAME,
     TONE_AND_AUDIENCE_SECTION_VARIABLE_NAME,
-)
-from libs.generate_text.graphs.blog_post.blog_post_body_output_format import (
-    BLOG_POST_BODY_FORMAT_RULES,
 )
 from libs.generate_text.prompts import BaseGenerateTextPrompt
 from libs.generate_text.results import BuildPromptResult
@@ -28,6 +24,8 @@ HUMANIZE_REWRITE_USER_TEMPLATE = (
 class BlogPostHumanizePrompt(BaseGenerateTextPrompt):
     """Prompts for rewriting the draft so it reads as human-written."""
 
+    system_prompt_template = HUMANIZE_SYSTEM_TEMPLATE
+
     def build_generate_prompt(self, state: GenerateTextState) -> BuildPromptResult:
         """Puts the newest step output, the draft, in the user prompt."""
         additional_context_prompt_section = self._build_additional_context_prompt_section(
@@ -37,12 +35,7 @@ class BlogPostHumanizePrompt(BaseGenerateTextPrompt):
             draft_text=state.latest_output(),
             additional_context_prompt_section=additional_context_prompt_section,
         )
-        return BuildPromptResult(
-            system_prompt_template=HUMANIZE_SYSTEM_TEMPLATE,
-            system_prompt_variables=self._build_system_prompt_variables(state),
-            required_system_prompt_variable_names=frozenset({FORMAT_RULES_VARIABLE_NAME}),
-            user_prompt=user_prompt,
-        )
+        return self._build_prompt_result(state, user_prompt)
 
     def build_rewrite_prompt(
         self, state: GenerateTextState, previous_output: str, feedback_text: str
@@ -52,12 +45,7 @@ class BlogPostHumanizePrompt(BaseGenerateTextPrompt):
             previous_output=previous_output,
             feedback_text=feedback_text,
         )
-        return BuildPromptResult(
-            system_prompt_template=HUMANIZE_SYSTEM_TEMPLATE,
-            system_prompt_variables=self._build_system_prompt_variables(state),
-            required_system_prompt_variable_names=frozenset({FORMAT_RULES_VARIABLE_NAME}),
-            user_prompt=user_prompt,
-        )
+        return self._build_prompt_result(state, user_prompt)
 
     def _build_system_prompt_variables(self, state: GenerateTextState) -> dict[str, str]:
         persona = state.build_persona()
@@ -68,7 +56,6 @@ class BlogPostHumanizePrompt(BaseGenerateTextPrompt):
             state.tone, state.target_audience
         )
         return {
-            FORMAT_RULES_VARIABLE_NAME: BLOG_POST_BODY_FORMAT_RULES,
             PERSONA_SECTION_VARIABLE_NAME: persona_prompt_section,
             TONE_AND_AUDIENCE_SECTION_VARIABLE_NAME: tone_and_audience_prompt_section,
         }

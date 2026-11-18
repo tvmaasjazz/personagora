@@ -14,7 +14,7 @@ from libs.llm.results import (
 )
 from libs.llm.services.base_llm_config_source_service import BaseLlmConfigSourceService
 from libs.llm.settings import LlmModelSettings, LlmSettings
-from libs.llm.types import LlmReasoningEffortType, LlmType
+from libs.llm.types import LlmReasoningEffortType
 from libs.llm.utils import PromptTemplateUtils
 
 logger = structlog.get_logger(__name__)
@@ -27,16 +27,7 @@ class LlmConfigService:
         self, llm_config_source_service: BaseLlmConfigSourceService, llm_settings: LlmSettings
     ) -> None:
         self._llm_config_source_service = llm_config_source_service
-        self._model_settings_by_llm_type: dict[LlmType, LlmModelSettings] = {
-            LlmType.GPT_5_4_NANO: llm_settings.gpt_5_4_nano,
-            LlmType.GPT_5_6_LUNA: llm_settings.gpt_5_6_luna,
-            LlmType.GPT_5_6_TERRA: llm_settings.gpt_5_6_terra,
-            LlmType.GPT_5_6_SOL: llm_settings.gpt_5_6_sol,
-            LlmType.GPT_6_LUNA: llm_settings.gpt_6_luna,
-            LlmType.GPT_6_1_TERRA: llm_settings.gpt_6_1_terra,
-            LlmType.GPT_6_2_SOL: llm_settings.gpt_6_2_sol,
-            LlmType.GPT_6_2_ASTRA: llm_settings.gpt_6_2_astra,
-        }
+        self._llm_settings = llm_settings
 
     async def resolve_config(
         self, llm_completion_input: LlmCompletionInput, auth_user: AuthUser
@@ -74,25 +65,18 @@ class LlmConfigService:
             llm_config_source_result, auth_user, call
         )
 
-    def get_model_settings(self, llm_type: LlmType) -> LlmModelSettings:
-        """Returns the model's settings; NotImplementedError if the type has none."""
-        model_settings = self._model_settings_by_llm_type.get(llm_type)
-        if model_settings is None:
-            raise NotImplementedError(f"No model configured for {llm_type}")
-        return model_settings
-
     def _build_default_result(
         self, llm_completion_input: LlmCompletionInput
     ) -> ResolveLlmConfigResult:
         system_prompt_input = llm_completion_input.system_prompt
         return ResolveLlmConfigResult(
             config_key=llm_completion_input.config_key,
-            model_settings=self.get_model_settings(llm_completion_input.default_llm_type),
+            model_settings=self._llm_settings.get_model_settings(
+                llm_completion_input.default_llm_type
+            ),
             system_prompt=PromptTemplateUtils.render(
                 system_prompt_input.default_template, system_prompt_input.variables
             ),
-            variation_key=None,
-            variation_version=None,
             llm_config_source_result=None,
         )
 
@@ -105,16 +89,13 @@ class LlmConfigService:
         system_prompt_input = llm_completion_input.system_prompt
 
         # The model must be exactly one we price
-        matching_model_settings = [
-            model_settings
-            for model_settings in self._model_settings_by_llm_type.values()
-            if model_settings.provider == llm_config_source_result.provider
-            and model_settings.model_name == llm_config_source_result.model_name
-        ]
-        if len(matching_model_settings) != 1:
+        matching_model_settings = self._llm_settings.get_model_settings_by_model_name(
+            llm_config_source_result.provider, llm_config_source_result.model_name
+        )
+        if matching_model_settings is None:
             raise LlmConfigRejectedException("model_not_allowed")
         model_settings = self._overlay_parameters(
-            matching_model_settings[0],
+            matching_model_settings,
             llm_config_source_result.reasoning_effort,
             llm_config_source_result.max_output_tokens,
         )
@@ -138,8 +119,6 @@ class LlmConfigService:
             config_key=llm_completion_input.config_key,
             model_settings=model_settings,
             system_prompt=PromptTemplateUtils.render(template, system_prompt_input.variables),
-            variation_key=llm_config_source_result.variation_key,
-            variation_version=llm_config_source_result.variation_version,
             llm_config_source_result=llm_config_source_result,
         )
 
@@ -155,6 +134,8 @@ class LlmConfigService:
             updates["reasoning_effort"] = reasoning_effort
         if max_output_tokens is not None:
             updates["max_output_tokens"] = max_output_tokens
+        if not updates:
+            return model_settings
 
         # Revalidate, since model_copy(update=) would skip the model's own checks
         try:

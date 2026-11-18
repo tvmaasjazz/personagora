@@ -24,6 +24,8 @@ OUTLINE_REWRITE_USER_TEMPLATE = (
 class BlogPostOutlinePrompt(BaseGenerateTextPrompt):
     """Prompts for planning a blog post's sections before any prose is written."""
 
+    system_prompt_template = OUTLINE_SYSTEM_TEMPLATE
+
     def build_generate_prompt(self, state: GenerateTextState) -> BuildPromptResult:
         """Builds the outline prompt from the brief alone, since no earlier step exists."""
         additional_context_prompt_section = self._build_additional_context_prompt_section(
@@ -33,11 +35,7 @@ class BlogPostOutlinePrompt(BaseGenerateTextPrompt):
             prompt_text=state.prompt_text,
             additional_context_prompt_section=additional_context_prompt_section,
         )
-        return BuildPromptResult(
-            system_prompt_template=OUTLINE_SYSTEM_TEMPLATE,
-            system_prompt_variables=self._build_system_prompt_variables(state),
-            user_prompt=user_prompt,
-        )
+        return self._build_prompt_result(state, user_prompt)
 
     def build_rewrite_prompt(
         self, state: GenerateTextState, previous_output: str, feedback_text: str
@@ -48,11 +46,7 @@ class BlogPostOutlinePrompt(BaseGenerateTextPrompt):
             previous_output=previous_output,
             feedback_text=feedback_text,
         )
-        return BuildPromptResult(
-            system_prompt_template=OUTLINE_SYSTEM_TEMPLATE,
-            system_prompt_variables=self._build_system_prompt_variables(state),
-            user_prompt=user_prompt,
-        )
+        return self._build_prompt_result(state, user_prompt)
 
     def _build_system_prompt_variables(self, state: GenerateTextState) -> dict[str, str]:
         persona = state.build_persona()

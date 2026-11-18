@@ -5,17 +5,13 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import ValidationError
 
-from libs.generate_text.constants import BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER
 from libs.generate_text.exceptions import GenerateTextOptionsInvalidException
 from libs.generate_text.graphs.base_generate_text_graph_builder import BaseGenerateTextGraphBuilder
-from libs.generate_text.graphs.blog_post.blog_post_body_output_format import (
-    BlogPostBodyOutputFormat,
-)
 from libs.generate_text.graphs.blog_post.inputs import BlogPostOptionsInput
-from libs.generate_text.graphs.blog_post.prompts import (
-    BlogPostDraftPrompt,
-    BlogPostHumanizePrompt,
-    BlogPostOutlinePrompt,
+from libs.generate_text.graphs.blog_post.step_config import (
+    BLOG_POST_DRAFT_STEP_CONFIG,
+    BLOG_POST_HUMANIZE_STEP_CONFIG,
+    BLOG_POST_OUTLINE_STEP_CONFIG,
 )
 from libs.generate_text.states import GenerateTextState
 from libs.generate_text.types import (
@@ -47,24 +43,25 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
 
         # Every step runs its standard tier until users can pick one
         step_tier = GenerateTextStepTierType.STANDARD
-        outline_llm_config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[
-            (GenerateTextNodeType.GENERATE_OUTLINE, step_tier)
-        ]
-        draft_llm_config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[
-            (GenerateTextNodeType.GENERATE_DRAFT, step_tier)
-        ]
-        humanize_llm_config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[
-            (GenerateTextNodeType.HUMANIZE, step_tier)
-        ]
-        outline_llm_type = self._generate_text_settings.blog_post.outline.standard
-        draft_llm_type = self._generate_text_settings.blog_post.draft.standard
-        humanize_llm_type = self._generate_text_settings.blog_post.humanize.standard
+        outline_llm_config_key = BLOG_POST_OUTLINE_STEP_CONFIG.llm_config_key_by_tier[step_tier]
+        draft_llm_config_key = BLOG_POST_DRAFT_STEP_CONFIG.llm_config_key_by_tier[step_tier]
+        humanize_llm_config_key = BLOG_POST_HUMANIZE_STEP_CONFIG.llm_config_key_by_tier[step_tier]
+        outline_llm_type = BLOG_POST_OUTLINE_STEP_CONFIG.read_standard_llm_type(
+            self._generate_text_settings
+        )
+        draft_llm_type = BLOG_POST_DRAFT_STEP_CONFIG.read_standard_llm_type(
+            self._generate_text_settings
+        )
+        humanize_llm_type = BLOG_POST_HUMANIZE_STEP_CONFIG.read_standard_llm_type(
+            self._generate_text_settings
+        )
 
-        # Prompts, output format and enabled steps
-        outline_prompt = BlogPostOutlinePrompt()
-        draft_prompt = BlogPostDraftPrompt()
-        humanize_prompt = BlogPostHumanizePrompt()
-        blog_post_body_output_format = BlogPostBodyOutputFormat()
+        # Prompts, output formats and enabled steps
+        outline_prompt = BLOG_POST_OUTLINE_STEP_CONFIG.prompt
+        draft_prompt = BLOG_POST_DRAFT_STEP_CONFIG.prompt
+        draft_output_format = BLOG_POST_DRAFT_STEP_CONFIG.output_format
+        humanize_prompt = BLOG_POST_HUMANIZE_STEP_CONFIG.prompt
+        humanize_output_format = BLOG_POST_HUMANIZE_STEP_CONFIG.output_format
 
         outline_options = blog_post_options.outline
         humanize_options = blog_post_options.humanize
@@ -150,7 +147,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
             draft_llm_config_key,
             draft_llm_type,
             draft_prompt,
-            blog_post_body_output_format,
+            draft_output_format,
         )
         state_graph.add_node(
             GenerateTextNodeType.GENERATE_DRAFT,
@@ -177,7 +174,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
                 draft_llm_type,
                 GenerateTextNodeType.REVIEW_DRAFT,
                 draft_prompt,
-                blog_post_body_output_format,
+                draft_output_format,
             )
             state_graph.add_node(
                 GenerateTextNodeType.REWRITE_DRAFT,
@@ -212,7 +209,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
                 humanize_llm_config_key,
                 humanize_llm_type,
                 humanize_prompt,
-                blog_post_body_output_format,
+                humanize_output_format,
             )
             state_graph.add_node(
                 GenerateTextNodeType.HUMANIZE,
@@ -239,7 +236,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
                     humanize_llm_type,
                     GenerateTextNodeType.REVIEW_HUMANIZE,
                     humanize_prompt,
-                    blog_post_body_output_format,
+                    humanize_output_format,
                 )
                 state_graph.add_node(
                     GenerateTextNodeType.REWRITE_HUMANIZE,

@@ -30,9 +30,8 @@ def _build_get_llm_config_result_with_payload() -> GetLlmConfigResult:
     return build_get_llm_config_result(
         config_key="blog-post-draft-standard",
         source_payload={
-            "config": {"model": "served"},
+            "config": {"model": "served", "provider": {"name": "OpenAI"}},
             "meta": {"version": 3},
-            "provider_name": "OpenAI",
         },
     )
 
@@ -89,7 +88,6 @@ async def test_get_config_well_formed_payload_returns_source_result(
                 "messages": [{"role": "system", "content": "Served."}],
             },
             "meta": {"variationKey": "variation-a", "version": 3},
-            "provider_name": "OpenAI",
         },
     )
 
@@ -116,7 +114,7 @@ async def test_track_call_returns_the_calls_result_and_reports_token_usage(
     assert launchdarkly_ai_sdk_stub.execute_and_track_inputs == [
         {
             "config_key": "blog-post-draft-standard",
-            "config": {"model": "served"},
+            "config": {"model": "served", "provider": {"name": "OpenAI"}},
             "meta": {"version": 3},
             "user_context": {
                 "kind": "user",
@@ -131,7 +129,7 @@ async def test_track_call_other_provider_creates_handler_for_that_provider(
     launchdarkly_ai_sdk_stub: LaunchDarklyAiSdkStub,
 ) -> None:
     llm_config_source_result = build_get_llm_config_result(
-        source_payload={"config": {}, "meta": {}, "provider_name": "Anthropic"}
+        source_payload={"config": {"provider": {"name": "Anthropic"}}, "meta": {}}
     )
 
     async def call() -> LlmProviderCompletionResult:
