@@ -21,6 +21,8 @@ them against the test database. It doesn't see this conversation, so pass it:
 - new `PermissionType` members and the roles that hold each
 - any backfill, and what should happen to existing rows
 - whether a down migration can reverse it
+- whether it breaks the code already deployed, and if so which release of the split this
+  is (`database.md` › Across a deploy)
 
 Write the change yourself only when it's too small to be worth the brief. Follow the
 same steps.

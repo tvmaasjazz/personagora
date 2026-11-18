@@ -507,7 +507,7 @@ Settings are defined once, in the lib. There is no app-side duplicate.
 ```python
 # libs/humanizer/settings.py
 class HumanizerSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     llm_request_timeout_seconds: int = 30
     max_rewrite_passes: int = 3
@@ -517,6 +517,9 @@ class HumanizerSettings(BaseModel):
   `BaseModel` that knows nothing about TOML, env vars, or file paths. It is registered
   on `AppSettings` in `apps/api/core/config.py` as
   `<domain>: <Domain>Settings = Field(default_factory=<Domain>Settings)`.
+- **Every lib settings model, nested ones included, sets `extra="forbid"`,** so a
+  renamed or removed setting still set in `.env`, `config.toml` or Railway refuses to
+  start instead of being ignored. A PR that renames or removes one lists the old env var.
 - **The root `AppSettings` is the only `BaseSettings`.** A nested `BaseSettings` reads
   the environment independently and ignores the root's TOML file and `__` delimiter.
 - Env vars override `config.toml`: `HUMANIZER__MAX_REWRITE_PASSES=5`. The TOML file

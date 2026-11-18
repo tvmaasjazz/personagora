@@ -214,6 +214,19 @@ and application code never imports them.
   `.down.sql` pair, the revision that runs them, and the matching Orm change. Missing
   the Orm change is the most common failure.
 
+### Across a deploy
+
+Railway runs migrations while the previous release is still serving. A migration must
+leave the schema working for the code already deployed, so a change that would break
+it ships over two or more releases:
+
+- **Drop a column or table:** the first release stops reading and writing it, making a
+  column it still inserts nullable. The next release drops it.
+- **Rename a column or change its type:** add the new column and write both, backfill,
+  move reads over, then drop the old column in a later release.
+- **Add `NOT NULL` or a constraint:** the release that writes valid values ships
+  first, and the constraint follows.
+
 ### Layout
 
 ```

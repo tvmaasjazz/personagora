@@ -4,7 +4,7 @@ from libs.users.types import ClientIpSourceType
 
 
 class UserSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     activity_interval_seconds: int = 60 * 5
     client_ip_source: ClientIpSourceType = ClientIpSourceType.CONNECTION

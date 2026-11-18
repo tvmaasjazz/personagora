@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class AuthSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     session_ttl_seconds: int = 60 * 60 * 24 * 14
     oauth_state_ttl_seconds: int = 60 * 10
