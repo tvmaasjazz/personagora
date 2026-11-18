@@ -104,3 +104,37 @@ def test_app_settings_llm_model_env_var_overrides_one_field_and_keeps_the_rest(
     loaded_app_settings = AppSettings()
 
     assert loaded_app_settings.llm.gpt_5_6_sol == Gpt56SolLlmModelSettings(max_output_tokens=1234)
+
+
+@pytest.mark.parametrize(
+    "sdk_key",
+    [
+        pytest.param(None, id="missing_key"),
+        pytest.param("", id="blank_key"),
+    ],
+)
+def test_app_settings_launchdarkly_enabled_without_sdk_key_raises_validation_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sdk_key: str | None
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LAUNCHDARKLY__IS_ENABLED", "true")
+    if sdk_key is None:
+        monkeypatch.delenv("LAUNCHDARKLY_SDK_KEY", raising=False)
+    else:
+        monkeypatch.setenv("LAUNCHDARKLY_SDK_KEY", sdk_key)
+
+    with pytest.raises(ValidationError):
+        AppSettings()
+
+
+def test_app_settings_launchdarkly_enabled_with_sdk_key_loads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LAUNCHDARKLY__IS_ENABLED", "true")
+    monkeypatch.setenv("LAUNCHDARKLY_SDK_KEY", "sdk-test-key")
+
+    loaded_app_settings = AppSettings()
+
+    assert loaded_app_settings.launchdarkly.is_enabled is True
+    assert loaded_app_settings.launchdarkly_sdk_key == "sdk-test-key"

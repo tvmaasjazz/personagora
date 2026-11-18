@@ -253,6 +253,64 @@ async def test_build_graph_rewrite_runs_on_its_steps_model(
     assert completion_llm_types == expected_llm_types
 
 
+@pytest.mark.parametrize(
+    ("options", "expected_config_keys"),
+    [
+        pytest.param(
+            build_blog_post_options_input(
+                outline=StepOptionInput(is_enabled=True, is_auto_approved=False),
+                draft=StepOptionInput(is_auto_approved=False),
+            ),
+            ["blog-post-outline-standard", "blog-post-outline-standard"],
+            id="outline_and_its_rewrite",
+        ),
+        pytest.param(
+            build_blog_post_options_input(draft=StepOptionInput(is_auto_approved=False)),
+            ["blog-post-draft-standard", "blog-post-draft-standard"],
+            id="draft_and_its_rewrite",
+        ),
+        pytest.param(
+            build_blog_post_options_input(
+                draft=StepOptionInput(is_auto_approved=True),
+                humanize=StepOptionInput(is_enabled=True, is_auto_approved=False),
+            ),
+            [
+                "blog-post-draft-standard",
+                "blog-post-humanize-standard",
+                "blog-post-humanize-standard",
+            ],
+            id="draft_then_humanize_and_its_rewrite",
+        ),
+    ],
+)
+async def test_build_graph_nodes_send_their_steps_standard_config_key(
+    db_session: AsyncSession,
+    db_session_factory: async_sessionmaker[AsyncSession],
+    options: BlogPostOptionsInput,
+    expected_config_keys: list[str],
+) -> None:
+    auth_user = await _insert_auth_user(db_session)
+    llm_service_stub = LlmServiceStub()
+    llm_service_stub.complete_result = build_llm_completion_result(content="# Draft\n\nA draft.")
+    run_service, blog_post_graph_builder = _build_graph_builder(
+        db_session_factory, llm_service_stub
+    )
+    generate_text_state = await _seed_state(db_session, run_service, auth_user)
+    blog_post_graph = blog_post_graph_builder.build_graph(
+        options.model_dump(mode="json"), InMemorySaver()
+    )
+    graph_run_config: RunnableConfig = {"configurable": {"thread_id": str(uuid4())}}
+    await blog_post_graph.ainvoke(generate_text_state, graph_run_config)
+    reject_command = Command(resume={"is_approved": False, "feedback_text": "Redo it."})
+
+    await blog_post_graph.ainvoke(reject_command, graph_run_config)
+
+    completion_config_keys = [
+        completion_input.config_key for completion_input in llm_service_stub.complete_inputs
+    ]
+    assert completion_config_keys == expected_config_keys
+
+
 async def test_build_graph_max_rewrite_passes_ends_run_instead_of_looping(
     db_session: AsyncSession, db_session_factory: async_sessionmaker[AsyncSession]
 ) -> None:

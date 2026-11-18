@@ -263,3 +263,93 @@ async def test_build_generate_node_max_output_format_retries_zero_calls_once_the
         await generate_node(generate_text_state)
 
     assert len(llm_service_stub.complete_inputs) == 1
+
+
+@pytest.mark.parametrize(
+    ("output_format", "expected_required_variable_names"),
+    [
+        pytest.param(BlogPostBodyOutputFormat(), frozenset({"format_rules"}), id="with_format"),
+        pytest.param(None, frozenset(), id="without_format"),
+    ],
+)
+async def test_build_generate_node_requires_format_rules_only_with_output_format(
+    output_format: BlogPostBodyOutputFormat | None,
+    expected_required_variable_names: frozenset[str],
+) -> None:
+    llm_service_stub = LlmServiceStub()
+    llm_service_stub.complete_result = build_llm_completion_result(content=VALID_BODY_TEXT)
+    generate_text_node_service = GenerateTextNodeService(
+        llm_service=llm_service_stub, generate_text_settings=GenerateTextSettings()
+    )
+    generate_node = generate_text_node_service.build_generate_node(
+        GenerateTextNodeType.GENERATE_DRAFT,
+        "test-config-key",
+        LlmType.GPT_5_6_SOL,
+        GenerateTextPromptStub(),
+        output_format,
+    )
+    generate_text_state = build_generate_text_state()
+
+    await generate_node(generate_text_state)
+
+    sent_system_prompt = llm_service_stub.complete_inputs[0].system_prompt
+    assert sent_system_prompt.required_variable_names == expected_required_variable_names
+
+
+@pytest.mark.parametrize(
+    ("output_format", "expected_required_variable_names"),
+    [
+        pytest.param(BlogPostBodyOutputFormat(), frozenset({"format_rules"}), id="with_format"),
+        pytest.param(None, frozenset(), id="without_format"),
+    ],
+)
+async def test_build_rewrite_node_requires_format_rules_only_with_output_format(
+    output_format: BlogPostBodyOutputFormat | None,
+    expected_required_variable_names: frozenset[str],
+) -> None:
+    llm_service_stub = LlmServiceStub()
+    llm_service_stub.complete_result = build_llm_completion_result(content=VALID_BODY_TEXT)
+    generate_text_node_service = GenerateTextNodeService(
+        llm_service=llm_service_stub, generate_text_settings=GenerateTextSettings()
+    )
+    rewrite_node = generate_text_node_service.build_rewrite_node(
+        GenerateTextNodeType.REWRITE_DRAFT,
+        "test-config-key",
+        LlmType.GPT_5_6_SOL,
+        GenerateTextNodeType.REVIEW_DRAFT,
+        GenerateTextPromptStub(),
+        output_format,
+    )
+    generate_text_state = build_generate_text_state(
+        step_outputs={"GENERATE_DRAFT": "A draft."},
+        step_feedback={"REVIEW_DRAFT": "Make it shorter."},
+    )
+
+    await rewrite_node(generate_text_state)
+
+    sent_system_prompt = llm_service_stub.complete_inputs[0].system_prompt
+    assert sent_system_prompt.required_variable_names == expected_required_variable_names
+
+
+async def test_build_rewrite_node_sends_its_steps_config_key_and_default_llm_type() -> None:
+    llm_service_stub = LlmServiceStub()
+    generate_text_node_service = GenerateTextNodeService(
+        llm_service=llm_service_stub, generate_text_settings=GenerateTextSettings()
+    )
+    rewrite_node = generate_text_node_service.build_rewrite_node(
+        GenerateTextNodeType.REWRITE_DRAFT,
+        "draft-config-key",
+        LlmType.GPT_6_1_TERRA,
+        GenerateTextNodeType.REVIEW_DRAFT,
+        GenerateTextPromptStub(),
+    )
+    generate_text_state = build_generate_text_state(
+        step_outputs={"GENERATE_DRAFT": "A draft."},
+        step_feedback={"REVIEW_DRAFT": "Make it shorter."},
+    )
+
+    await rewrite_node(generate_text_state)
+
+    sent_completion_input = llm_service_stub.complete_inputs[0]
+    assert sent_completion_input.config_key == "draft-config-key"
+    assert sent_completion_input.default_llm_type == LlmType.GPT_6_1_TERRA

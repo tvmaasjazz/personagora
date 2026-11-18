@@ -96,7 +96,9 @@ async def _check() -> None:
         if not ld_client.is_initialized():
             print("LaunchDarkly did not connect in time; steps will show their code defaults")
         await init_client(client=ld_client)
-        llm_config_source_service = LaunchDarklyLlmConfigSourceService()
+        llm_config_source_service = LaunchDarklyLlmConfigSourceService(
+            launchdarkly_ai_sdk=launchdarkly_ai_server
+        )
     else:
         print("LaunchDarkly is off (set LAUNCHDARKLY__IS_ENABLED=true); showing code defaults")
         llm_config_source_service = DefaultLlmConfigSourceService()

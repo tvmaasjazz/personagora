@@ -1,12 +1,7 @@
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Protocol
 
 import structlog
-from launchdarkly_ai_server import (
-    create_handler,
-    execute_and_track,
-    inspect_config,
-)
 
 from libs.auth.results import AuthUser
 from libs.llm.results import (
@@ -19,15 +14,51 @@ from libs.llm.services.base_llm_config_source_service import BaseLlmConfigSource
 logger = structlog.get_logger(__name__)
 
 
+class LaunchDarklyAiSdkProtocol(Protocol):
+    """The launchdarkly_ai_server functions this source calls; the module itself satisfies it."""
+
+    async def inspect_config(self, config_key: str, context: dict[str, Any], /) -> dict[str, Any]:
+        """Returns the config served to the context, never raising."""
+        ...
+
+    def create_handler(
+        self,
+        provides_for: tuple[str, Any],
+        fn: Callable[..., Awaitable[dict[str, Any]]],
+        /,
+        *,
+        capture_content: bool | None = None,
+    ) -> Any:
+        """Wraps fn as a provider handler."""
+        ...
+
+    async def execute_and_track(
+        self,
+        *,
+        config_key: str,
+        config: dict[str, Any],
+        meta: dict[str, Any],
+        user_context: dict[str, Any],
+        handler: Any,
+    ) -> dict[str, Any]:
+        """Runs the handler and reports its duration, tokens and outcome."""
+        ...
+
+
 class LaunchDarklyLlmConfigSourceService(BaseLlmConfigSourceService):
     """Serves each call's config from LaunchDarkly AI Configs and reports the call back to it."""
+
+    def __init__(self, launchdarkly_ai_sdk: LaunchDarklyAiSdkProtocol) -> None:
+        self._launchdarkly_ai_sdk = launchdarkly_ai_sdk
 
     async def find_config(
         self, config_key: str, auth_user: AuthUser
     ) -> LlmConfigSourceResult | None:
         """Returns the config LaunchDarkly serves this user, or None when it serves none."""
         # Ask LaunchDarkly, which never raises
-        inspect_config_result = await inspect_config(config_key, self._build_context(auth_user))
+        inspect_config_result = await self._launchdarkly_ai_sdk.inspect_config(
+            config_key, self._build_context(auth_user)
+        )
         if not inspect_config_result.get("enabled"):
             self._log_not_served(config_key, "not_enabled")
             return None
@@ -114,13 +145,13 @@ class LaunchDarklyLlmConfigSourceService(BaseLlmConfigSourceService):
 
         # The provider name comes from the served config, so a config for another provider
         # is still tracked
-        handler = create_handler(
+        handler = self._launchdarkly_ai_sdk.create_handler(
             (llm_config_source_result.provider_name, "messages"),
             run_call,
             capture_content=False,
         )
         try:
-            await execute_and_track(
+            await self._launchdarkly_ai_sdk.execute_and_track(
                 config_key=llm_config_source_result.config_key,
                 config=llm_config_source_result.source_data["config"],
                 meta=llm_config_source_result.source_data["meta"],

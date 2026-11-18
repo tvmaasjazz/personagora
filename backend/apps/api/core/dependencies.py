@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Annotated
 
+import launchdarkly_ai_server
 from fastapi import BackgroundTasks, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import State
@@ -101,7 +102,7 @@ def build_llm_service(app_state: State) -> LlmService:
     )
     llm_call_service = LlmCallService(db_session_factory=app_state.db_session_factory)
     llm_config_source_service: BaseLlmConfigSourceService = (
-        LaunchDarklyLlmConfigSourceService()
+        LaunchDarklyLlmConfigSourceService(launchdarkly_ai_sdk=launchdarkly_ai_server)
         if app_settings.launchdarkly.is_enabled
         else DefaultLlmConfigSourceService()
     )

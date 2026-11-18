@@ -122,3 +122,52 @@ def test_build_rewrite_prompt_shares_generate_prompts_system_prompt() -> None:
 
     assert rewrite_result.system_prompt_template == generate_result.system_prompt_template
     assert rewrite_result.system_prompt_variables == generate_result.system_prompt_variables
+
+
+def test_build_generate_prompt_renders_system_prompt_with_persona_and_tone() -> None:
+    state = build_generate_text_state(
+        persona_name="Marta Quill",
+        persona_bio="Writes about sourdough.",
+        persona_background="Former baker.",
+        persona_writing_style="Short punchy sentences.",
+        persona_sample_writing="The starter bubbled all night.",
+        tone="Playful",
+        target_audience="Home bakers",
+    )
+
+    build_prompt_result = BlogPostOutlinePrompt().build_generate_prompt(state)
+
+    system_prompt = PromptTemplateUtils.render(
+        build_prompt_result.system_prompt_template,
+        build_prompt_result.system_prompt_variables,
+    )
+    assert system_prompt == (
+        "Write an outline for a blog post: the sections it will cover, the key point each "
+        "one makes, and the order they build in. Keep it a plan, not the prose itself."
+        + "\n\nWho you are writing as:\n"
+        "Name: Marta Quill\nBio: Writes about sourdough.\nBackground: Former baker."
+        + "\n\nFor this piece:\nTone: Playful\nTarget audience: Home bakers"
+    )
+
+
+def test_build_generate_prompt_renders_system_prompt_with_empty_persona_and_tone() -> None:
+    state = build_generate_text_state(
+        persona_name="",
+        persona_bio="",
+        persona_background=None,
+        persona_writing_style=None,
+        persona_sample_writing=None,
+        tone=None,
+        target_audience=None,
+    )
+
+    build_prompt_result = BlogPostOutlinePrompt().build_generate_prompt(state)
+
+    system_prompt = PromptTemplateUtils.render(
+        build_prompt_result.system_prompt_template,
+        build_prompt_result.system_prompt_variables,
+    )
+    assert system_prompt == (
+        "Write an outline for a blog post: the sections it will cover, the key point each "
+        "one makes, and the order they build in. Keep it a plan, not the prose itself."
+    )

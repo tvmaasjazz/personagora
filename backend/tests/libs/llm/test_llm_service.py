@@ -15,7 +15,11 @@ from libs.llm.exceptions import (
     LlmUnavailableException,
 )
 from libs.llm.inputs import LlmProviderCompletionInput
-from libs.llm.results import LlmCompletionResult, LlmStructuredCompletionResult
+from libs.llm.results import (
+    LlmCompletionResult,
+    LlmConfigMessageResult,
+    LlmStructuredCompletionResult,
+)
 from libs.llm.services.default_llm_config_source_service import DefaultLlmConfigSourceService
 from libs.llm.services.llm_call_service import LlmCallService
 from libs.llm.services.llm_config_service import LlmConfigService
@@ -31,11 +35,12 @@ from libs.llm.types import (
 from tests.factories.auth import build_auth_user
 from tests.factories.llm import (
     build_llm_completion_input,
+    build_llm_config_source_result,
     build_llm_provider_completion_result,
     build_llm_system_prompt_input,
 )
 from tests.factories.users import insert_user_row
-from tests.stubs.llm import LlmProviderServiceStub
+from tests.stubs.llm import LlmConfigSourceServiceStub, LlmProviderServiceStub
 
 
 class _SampleOutput(BaseModel):
@@ -433,3 +438,113 @@ async def test_complete_structured_model_without_reasoning_effort_passes_none(
             reasoning_effort=None,
         )
     ]
+
+
+async def test_complete_served_config_reaches_provider_and_row_and_is_tracked(
+    db_session: AsyncSession, db_session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    auth_user = await _insert_auth_user(db_session)
+    llm_provider_service_stub = LlmProviderServiceStub()
+    llm_config_source_result = build_llm_config_source_result(
+        config_key="served-config",
+        model_name="gpt-6.2-sol",
+        messages=[LlmConfigMessageResult(role="system", content="Hi {{name}}, be {{style}}.")],
+        variation_key="served-variation",
+        variation_version=7,
+    )
+    llm_config_source_service_stub = LlmConfigSourceServiceStub()
+    llm_config_source_service_stub.find_config_result = llm_config_source_result
+    llm_service = LlmService(
+        llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
+        llm_call_service=LlmCallService(db_session_factory=db_session_factory),
+        llm_config_service=LlmConfigService(llm_config_source_service_stub, LlmSettings()),
+    )
+    llm_completion_input = build_llm_completion_input(
+        config_key="served-config",
+        default_llm_type=LlmType.GPT_5_4_NANO,
+        purpose="served-purpose",
+        system_prompt=build_llm_system_prompt_input(
+            default_template="Default for {{name}}.",
+            variables={"name": "Marta", "style": "brief"},
+        ),
+        user_prompt="Say hi.",
+    )
+
+    complete_result = await llm_service.complete(llm_completion_input, auth_user)
+
+    assert llm_provider_service_stub.complete_inputs == [
+        LlmProviderCompletionInput(
+            model_name="gpt-6.2-sol",
+            system_prompt="Hi Marta, be brief.",
+            user_prompt="Say hi.",
+            max_output_tokens=8192,
+            request_timeout_seconds=120,
+            reasoning_effort=None,
+        )
+    ]
+    assert llm_config_source_service_stub.track_call_inputs == [
+        (llm_config_source_result, auth_user)
+    ]
+    llm_call_query = select(LlmCallOrm).where(
+        LlmCallOrm.identity == complete_result.llm_call_identity
+    )
+    llm_call_record = await db_session.scalar(llm_call_query)
+    assert llm_call_record is not None
+    assert llm_call_record.model_name == "gpt-6.2-sol"
+    assert llm_call_record.system_prompt == "Hi Marta, be brief."
+    assert llm_call_record.config_key == "served-config"
+    assert llm_call_record.config_variation_key == "served-variation"
+    assert llm_call_record.config_variation_version == 7
+
+
+async def test_complete_served_config_failing_a_check_falls_back_to_default(
+    db_session: AsyncSession, db_session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    auth_user = await _insert_auth_user(db_session)
+    llm_provider_service_stub = LlmProviderServiceStub()
+    llm_config_source_service_stub = LlmConfigSourceServiceStub()
+    llm_config_source_service_stub.find_config_result = build_llm_config_source_result(
+        config_key="rejected-config",
+        model_name="unknown-model",
+        messages=[LlmConfigMessageResult(role="system", content="Served for {{name}}.")],
+        variation_key="rejected-variation",
+        variation_version=3,
+    )
+    llm_service = LlmService(
+        llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
+        llm_call_service=LlmCallService(db_session_factory=db_session_factory),
+        llm_config_service=LlmConfigService(llm_config_source_service_stub, LlmSettings()),
+    )
+    llm_completion_input = build_llm_completion_input(
+        config_key="rejected-config",
+        default_llm_type=LlmType.GPT_5_4_NANO,
+        purpose="rejected-purpose",
+        system_prompt=build_llm_system_prompt_input(
+            default_template="Default for {{name}}.", variables={"name": "Marta"}
+        ),
+        user_prompt="Say hi.",
+    )
+
+    complete_result = await llm_service.complete(llm_completion_input, auth_user)
+
+    assert llm_provider_service_stub.complete_inputs == [
+        LlmProviderCompletionInput(
+            model_name="gpt-5.4-nano",
+            system_prompt="Default for Marta.",
+            user_prompt="Say hi.",
+            max_output_tokens=8192,
+            request_timeout_seconds=30,
+            reasoning_effort=LlmReasoningEffortType.LOW,
+        )
+    ]
+    assert llm_config_source_service_stub.track_call_inputs == []
+    llm_call_query = select(LlmCallOrm).where(
+        LlmCallOrm.identity == complete_result.llm_call_identity
+    )
+    llm_call_record = await db_session.scalar(llm_call_query)
+    assert llm_call_record is not None
+    assert llm_call_record.model_name == "gpt-5.4-nano"
+    assert llm_call_record.system_prompt == "Default for Marta."
+    assert llm_call_record.config_key == "rejected-config"
+    assert llm_call_record.config_variation_key is None
+    assert llm_call_record.config_variation_version is None
