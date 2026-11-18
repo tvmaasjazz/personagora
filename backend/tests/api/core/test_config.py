@@ -104,3 +104,21 @@ def test_app_settings_llm_model_env_var_overrides_one_field_and_keeps_the_rest(
     loaded_app_settings = AppSettings()
 
     assert loaded_app_settings.llm.gpt_5_6_sol == Gpt56SolLlmModelSettings(max_output_tokens=1234)
+
+
+@pytest.mark.parametrize(
+    "stale_variable_name",
+    [
+        pytest.param("LLM__STRONG__MODEL_NAME", id="removed_model"),
+        pytest.param("LLM__GPT_5_6_SOL__MAX_TOKENS", id="unknown_model_field"),
+        pytest.param("GENERATE_TEXT__BLOG_POST__DRAFT__STRONG", id="unknown_step_tier"),
+    ],
+)
+def test_app_settings_unknown_nested_key_raises_validation_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stale_variable_name: str
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(stale_variable_name, "stale")
+
+    with pytest.raises(ValidationError):
+        AppSettings()
