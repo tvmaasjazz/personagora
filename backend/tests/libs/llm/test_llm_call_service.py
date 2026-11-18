@@ -16,6 +16,7 @@ from tests.factories.llm import (
     build_llm_completion_input,
     build_llm_model_settings,
     build_llm_provider_completion_result,
+    build_resolve_llm_config_result,
 )
 from tests.factories.users import insert_user_row
 
@@ -31,13 +32,21 @@ async def test_create_pending_llm_call_persists_pending_row_with_null_metrics(
 ) -> None:
     auth_user = await _insert_auth_user(db_session)
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
-    llm_completion_input = build_llm_completion_input(purpose="pending-purpose")
-    model_settings = build_llm_model_settings(
-        provider=LlmProviderType.ANTHROPIC, model_name="claude-test-model"
+    llm_completion_input = build_llm_completion_input(
+        config_key="pending-config", purpose="pending-purpose"
+    )
+    resolve_llm_config_result = build_resolve_llm_config_result(
+        config_key="pending-config",
+        model_settings=build_llm_model_settings(
+            provider=LlmProviderType.ANTHROPIC, model_name="claude-test-model"
+        ),
+        system_prompt="Rendered system prompt.",
+        variation_key="pending-variation",
+        variation_version=3,
     )
 
     create_pending_llm_call_result = await llm_call_service.create_pending_llm_call(
-        llm_completion_input, model_settings, auth_user
+        llm_completion_input, resolve_llm_config_result, auth_user
     )
 
     llm_call_query = select(LlmCallOrm).where(
@@ -50,6 +59,10 @@ async def test_create_pending_llm_call_persists_pending_row_with_null_metrics(
     assert llm_call_record.provider == LlmProviderType.ANTHROPIC
     assert llm_call_record.model_name == "claude-test-model"
     assert llm_call_record.purpose == "pending-purpose"
+    assert llm_call_record.system_prompt == "Rendered system prompt."
+    assert llm_call_record.config_key == "pending-config"
+    assert llm_call_record.config_variation_key == "pending-variation"
+    assert llm_call_record.config_variation_version == 3
     assert llm_call_record.input_tokens is None
     assert llm_call_record.output_tokens is None
     assert llm_call_record.cached_input_tokens is None
@@ -67,9 +80,9 @@ async def test_complete_llm_call_updates_row_with_result_and_cost(
     auth_user = await _insert_auth_user(db_session)
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
     llm_completion_input = build_llm_completion_input(purpose="complete-purpose")
-    model_settings = build_llm_model_settings()
+    resolve_llm_config_result = build_resolve_llm_config_result()
     create_pending_llm_call_result = await llm_call_service.create_pending_llm_call(
-        llm_completion_input, model_settings, auth_user
+        llm_completion_input, resolve_llm_config_result, auth_user
     )
     provider_completion_result = build_llm_provider_completion_result(
         content="Hello there.",
@@ -127,9 +140,9 @@ async def test_fail_llm_call_llm_exception_writes_reason_and_provider_message(
     auth_user = await _insert_auth_user(db_session)
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
     llm_completion_input = build_llm_completion_input(purpose="fail-purpose")
-    model_settings = build_llm_model_settings()
+    resolve_llm_config_result = build_resolve_llm_config_result()
     create_pending_llm_call_result = await llm_call_service.create_pending_llm_call(
-        llm_completion_input, model_settings, auth_user
+        llm_completion_input, resolve_llm_config_result, auth_user
     )
     llm_provider_exception = LlmUnavailableException(
         "The LLM provider is unavailable", provider_message="upstream said no capacity"
@@ -161,9 +174,9 @@ async def test_fail_llm_call_non_llm_exception_records_provider_error_reason_no_
     auth_user = await _insert_auth_user(db_session)
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
     llm_completion_input = build_llm_completion_input(purpose="generic-fail-purpose")
-    model_settings = build_llm_model_settings()
+    resolve_llm_config_result = build_resolve_llm_config_result()
     create_pending_llm_call_result = await llm_call_service.create_pending_llm_call(
-        llm_completion_input, model_settings, auth_user
+        llm_completion_input, resolve_llm_config_result, auth_user
     )
 
     await llm_call_service.fail_llm_call(

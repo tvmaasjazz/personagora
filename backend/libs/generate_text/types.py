@@ -50,3 +50,9 @@ class GenerateTextStepStatusType(StrEnum):
 class HumanDecisionType(StrEnum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+
+
+class GenerateTextStepTierType(StrEnum):
+    """The tier a step runs at; every step is STANDARD until a user picks a tier later."""
+
+    STANDARD = "STANDARD"

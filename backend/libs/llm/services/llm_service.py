@@ -8,12 +8,13 @@ from libs.llm.inputs import LlmCompletionInput, LlmProviderCompletionInput
 from libs.llm.results import (
     CompleteLlmCallResult,
     LlmCompletionResult,
+    LlmProviderCompletionResult,
     LlmStructuredCompletionResult,
 )
 from libs.llm.services.base_llm_provider_service import BaseLlmProviderService
 from libs.llm.services.llm_call_service import LlmCallService
-from libs.llm.settings import LlmModelSettings, LlmSettings
-from libs.llm.types import LlmProviderType, LlmType
+from libs.llm.services.llm_config_service import LlmConfigService
+from libs.llm.types import LlmProviderType
 from libs.llm.utils import LlmUtils
 
 logger = structlog.get_logger(__name__)
@@ -26,20 +27,11 @@ class LlmService:
         self,
         llm_provider_services: dict[LlmProviderType, BaseLlmProviderService],
         llm_call_service: LlmCallService,
-        llm_settings: LlmSettings,
+        llm_config_service: LlmConfigService,
     ) -> None:
         self._llm_provider_services = llm_provider_services
         self._llm_call_service = llm_call_service
-        self._model_settings_by_llm_type: dict[LlmType, LlmModelSettings] = {
-            LlmType.GPT_5_4_NANO: llm_settings.gpt_5_4_nano,
-            LlmType.GPT_5_6_LUNA: llm_settings.gpt_5_6_luna,
-            LlmType.GPT_5_6_TERRA: llm_settings.gpt_5_6_terra,
-            LlmType.GPT_5_6_SOL: llm_settings.gpt_5_6_sol,
-            LlmType.GPT_6_LUNA: llm_settings.gpt_6_luna,
-            LlmType.GPT_6_1_TERRA: llm_settings.gpt_6_1_terra,
-            LlmType.GPT_6_2_SOL: llm_settings.gpt_6_2_sol,
-            LlmType.GPT_6_2_ASTRA: llm_settings.gpt_6_2_astra,
-        }
+        self._llm_config_service = llm_config_service
 
     async def complete(
         self, llm_completion_input: LlmCompletionInput, auth_user: AuthUser
@@ -83,18 +75,22 @@ class LlmService:
         auth_user: AuthUser,
         output_type: type[BaseModel] | None,
     ) -> CompleteLlmCallResult:
-        model_settings = self._resolve_model(llm_completion_input.llm_type)
+        # Resolve the model and system prompt, from the config source or the code default
+        resolve_llm_config_result = await self._llm_config_service.resolve_config(
+            llm_completion_input, auth_user
+        )
+        model_settings = resolve_llm_config_result.model_settings
         llm_provider_service = self._resolve_provider_service(model_settings.provider)
 
         create_pending_llm_call_result = await self._llm_call_service.create_pending_llm_call(
-            llm_completion_input, model_settings, auth_user
+            llm_completion_input, resolve_llm_config_result, auth_user
         )
         llm_call_id = create_pending_llm_call_result.llm_call_id
         llm_call_identity = create_pending_llm_call_result.llm_call_identity
 
         provider_input = LlmProviderCompletionInput(
             model_name=model_settings.model_name,
-            system_prompt=llm_completion_input.system_prompt,
+            system_prompt=resolve_llm_config_result.system_prompt,
             user_prompt=llm_completion_input.user_prompt,
             max_output_tokens=model_settings.max_output_tokens,
             request_timeout_seconds=model_settings.request_timeout_seconds,
@@ -103,12 +99,13 @@ class LlmService:
 
         start_time = DateTimeUtils.now_monotonic()
         try:
-            if output_type is None:
-                provider_completion_result = await llm_provider_service.complete(provider_input)
-            else:
-                provider_completion_result = await llm_provider_service.complete_structured(
-                    provider_input, output_type
-                )
+            provider_completion_result = await self._llm_config_service.track_call(
+                resolve_llm_config_result,
+                auth_user,
+                lambda: self._complete_with_provider(
+                    llm_provider_service, provider_input, output_type
+                ),
+            )
         except Exception as llm_provider_exception:
             duration_ms = DateTimeUtils.elapsed_ms(start_time)
             await self._llm_call_service.fail_llm_call(
@@ -131,7 +128,8 @@ class LlmService:
 
         logger.info(
             "llm_call_completed",
-            llm_type=llm_completion_input.llm_type,
+            config_key=resolve_llm_config_result.config_key,
+            config_variation_key=resolve_llm_config_result.variation_key,
             model_name=model_settings.model_name,
             purpose=llm_completion_input.purpose,
             input_tokens=provider_completion_result.input_tokens,
@@ -150,11 +148,15 @@ class LlmService:
             provider_completion_result=provider_completion_result,
         )
 
-    def _resolve_model(self, llm_type: LlmType) -> LlmModelSettings:
-        model_settings = self._model_settings_by_llm_type.get(llm_type)
-        if model_settings is None:
-            raise NotImplementedError(f"No model configured for {llm_type}")
-        return model_settings
+    async def _complete_with_provider(
+        self,
+        llm_provider_service: BaseLlmProviderService,
+        provider_input: LlmProviderCompletionInput,
+        output_type: type[BaseModel] | None,
+    ) -> LlmProviderCompletionResult:
+        if output_type is None:
+            return await llm_provider_service.complete(provider_input)
+        return await llm_provider_service.complete_structured(provider_input, output_type)
 
     def _resolve_provider_service(self, provider: LlmProviderType) -> BaseLlmProviderService:
         llm_provider_service = self._llm_provider_services.get(provider)

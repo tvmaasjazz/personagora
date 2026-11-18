@@ -5,7 +5,7 @@ from libs.generate_text.states import GenerateTextState
 OUTLINE_SYSTEM_TEMPLATE = (
     "Write an outline for a blog post: the sections it will cover, the key point each "
     "one makes, and the order they build in. Keep it a plan, not the prose itself."
-    "{persona_prompt_section}{tone_and_audience_prompt_section}"
+    "{{persona_section}}{{tone_and_audience_section}}"
 )
 
 OUTLINE_USER_TEMPLATE = "Brief:\n\n{prompt_text}{additional_context_prompt_section}"
@@ -30,7 +30,9 @@ class BlogPostOutlinePrompt(BaseGenerateTextPrompt):
             additional_context_prompt_section=additional_context_prompt_section,
         )
         return BuildPromptResult(
-            system_prompt=self._build_system_prompt(state), user_prompt=user_prompt
+            system_prompt_template=OUTLINE_SYSTEM_TEMPLATE,
+            system_prompt_variables=self._build_system_prompt_variables(state),
+            user_prompt=user_prompt,
         )
 
     def build_rewrite_prompt(
@@ -43,10 +45,12 @@ class BlogPostOutlinePrompt(BaseGenerateTextPrompt):
             feedback_text=feedback_text,
         )
         return BuildPromptResult(
-            system_prompt=self._build_system_prompt(state), user_prompt=user_prompt
+            system_prompt_template=OUTLINE_SYSTEM_TEMPLATE,
+            system_prompt_variables=self._build_system_prompt_variables(state),
+            user_prompt=user_prompt,
         )
 
-    def _build_system_prompt(self, state: GenerateTextState) -> str:
+    def _build_system_prompt_variables(self, state: GenerateTextState) -> dict[str, str]:
         persona = state.build_persona()
         persona_prompt_section = self._build_persona_prompt_section(
             persona, ["name", "bio", "background"]
@@ -54,7 +58,7 @@ class BlogPostOutlinePrompt(BaseGenerateTextPrompt):
         tone_and_audience_prompt_section = self._build_tone_and_audience_prompt_section(
             state.tone, state.target_audience
         )
-        return OUTLINE_SYSTEM_TEMPLATE.format(
-            persona_prompt_section=persona_prompt_section,
-            tone_and_audience_prompt_section=tone_and_audience_prompt_section,
-        )
+        return {
+            "persona_section": persona_prompt_section,
+            "tone_and_audience_section": tone_and_audience_prompt_section,
+        }

@@ -11,8 +11,11 @@ from libs.database.orm.llm_call import LlmCallOrm
 from libs.database.utils import DatabaseResultUtils
 from libs.llm.exceptions import LlmException
 from libs.llm.inputs import LlmCompletionInput
-from libs.llm.results import CreatePendingLlmCallResult, LlmProviderCompletionResult
-from libs.llm.settings import LlmModelSettings
+from libs.llm.results import (
+    CreatePendingLlmCallResult,
+    LlmProviderCompletionResult,
+    ResolveLlmConfigResult,
+)
 from libs.llm.types import LlmCallReasonType, LlmCallStatusType
 from libs.llm.utils import LlmUtils
 
@@ -28,10 +31,11 @@ class LlmCallService:
     async def create_pending_llm_call(
         self,
         llm_completion_input: LlmCompletionInput,
-        model_settings: LlmModelSettings,
+        resolve_llm_config_result: ResolveLlmConfigResult,
         auth_user: AuthUser,
     ) -> CreatePendingLlmCallResult:
         """Commits a PENDING call row before the provider is asked, so a crash leaves a trace."""
+        model_settings = resolve_llm_config_result.model_settings
         async with self._db_session_factory() as db_session, db_session.begin():
             # Insert the pending call and read back its keys
             llm_call_insert = (
@@ -40,7 +44,10 @@ class LlmCallService:
                     provider=model_settings.provider,
                     model_name=model_settings.model_name,
                     purpose=llm_completion_input.purpose,
-                    system_prompt=llm_completion_input.system_prompt,
+                    system_prompt=resolve_llm_config_result.system_prompt,
+                    config_key=resolve_llm_config_result.config_key,
+                    config_variation_key=resolve_llm_config_result.variation_key,
+                    config_variation_version=resolve_llm_config_result.variation_version,
                     user_prompt=llm_completion_input.user_prompt,
                     run_id=llm_completion_input.run_id,
                     step_id=llm_completion_input.step_id,

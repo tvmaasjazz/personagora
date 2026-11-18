@@ -5,6 +5,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import ValidationError
 
+from libs.generate_text.constants import BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER
 from libs.generate_text.exceptions import GenerateTextOptionsInvalidException
 from libs.generate_text.graphs.base_generate_text_graph_builder import BaseGenerateTextGraphBuilder
 from libs.generate_text.graphs.blog_post.blog_post_body_output_format import (
@@ -17,7 +18,11 @@ from libs.generate_text.graphs.blog_post.prompts import (
     BlogPostOutlinePrompt,
 )
 from libs.generate_text.states import GenerateTextState
-from libs.generate_text.types import GenerateTextNodeType, HumanDecisionType
+from libs.generate_text.types import (
+    GenerateTextNodeType,
+    GenerateTextStepTierType,
+    HumanDecisionType,
+)
 
 
 class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
@@ -41,6 +46,16 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
             ) from validation_error
 
         # Every step runs its standard tier until users can pick one
+        tier = GenerateTextStepTierType.STANDARD
+        outline_llm_config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[
+            (GenerateTextNodeType.GENERATE_OUTLINE, tier)
+        ]
+        draft_llm_config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[
+            (GenerateTextNodeType.GENERATE_DRAFT, tier)
+        ]
+        humanize_llm_config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[
+            (GenerateTextNodeType.HUMANIZE, tier)
+        ]
         outline_llm_type = self._generate_text_settings.blog_post.outline.standard
         draft_llm_type = self._generate_text_settings.blog_post.draft.standard
         humanize_llm_type = self._generate_text_settings.blog_post.humanize.standard
@@ -72,7 +87,10 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
         # Outline: optional first pass at the post's shape
         if outline_options is not None and outline_options.is_enabled:
             outline_node = self._node_service.build_generate_node(
-                GenerateTextNodeType.GENERATE_OUTLINE, outline_llm_type, outline_prompt
+                GenerateTextNodeType.GENERATE_OUTLINE,
+                outline_llm_config_key,
+                outline_llm_type,
+                outline_prompt,
             )
             state_graph.add_node(
                 GenerateTextNodeType.GENERATE_OUTLINE,
@@ -95,6 +113,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
                 )
                 rewrite_outline_node = self._node_service.build_rewrite_node(
                     GenerateTextNodeType.REWRITE_OUTLINE,
+                    outline_llm_config_key,
                     outline_llm_type,
                     GenerateTextNodeType.REVIEW_OUTLINE,
                     outline_prompt,
@@ -128,6 +147,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
         # Draft: always runs
         draft_node = self._node_service.build_generate_node(
             GenerateTextNodeType.GENERATE_DRAFT,
+            draft_llm_config_key,
             draft_llm_type,
             draft_prompt,
             blog_post_body_output_format,
@@ -153,6 +173,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
             )
             rewrite_draft_node = self._node_service.build_rewrite_node(
                 GenerateTextNodeType.REWRITE_DRAFT,
+                draft_llm_config_key,
                 draft_llm_type,
                 GenerateTextNodeType.REVIEW_DRAFT,
                 draft_prompt,
@@ -188,6 +209,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
         if humanize_options is not None and humanize_options.is_enabled:
             humanize_node = self._node_service.build_generate_node(
                 GenerateTextNodeType.HUMANIZE,
+                humanize_llm_config_key,
                 humanize_llm_type,
                 humanize_prompt,
                 blog_post_body_output_format,
@@ -213,6 +235,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
                 )
                 rewrite_humanize_node = self._node_service.build_rewrite_node(
                     GenerateTextNodeType.REWRITE_HUMANIZE,
+                    humanize_llm_config_key,
                     humanize_llm_type,
                     GenerateTextNodeType.REVIEW_HUMANIZE,
                     humanize_prompt,

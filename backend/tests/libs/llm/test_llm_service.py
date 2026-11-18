@@ -16,7 +16,9 @@ from libs.llm.exceptions import (
 )
 from libs.llm.inputs import LlmProviderCompletionInput
 from libs.llm.results import LlmCompletionResult, LlmStructuredCompletionResult
+from libs.llm.services.default_llm_config_source_service import DefaultLlmConfigSourceService
 from libs.llm.services.llm_call_service import LlmCallService
+from libs.llm.services.llm_config_service import LlmConfigService
 from libs.llm.services.llm_service import LlmService
 from libs.llm.settings import Gpt54NanoLlmModelSettings, LlmSettings
 from libs.llm.types import (
@@ -30,6 +32,7 @@ from tests.factories.auth import build_auth_user
 from tests.factories.llm import (
     build_llm_completion_input,
     build_llm_provider_completion_result,
+    build_llm_system_prompt_input,
 )
 from tests.factories.users import insert_user_row
 from tests.stubs.llm import LlmProviderServiceStub
@@ -62,6 +65,12 @@ def _build_llm_settings(
     )
 
 
+def _build_llm_config_service(llm_settings: LlmSettings) -> LlmConfigService:
+    return LlmConfigService(
+        llm_config_source_service=DefaultLlmConfigSourceService(), llm_settings=llm_settings
+    )
+
+
 async def _insert_auth_user(db_session: AsyncSession) -> AuthUser:
     user_record = await insert_user_row(db_session)
     await db_session.commit()
@@ -87,10 +96,10 @@ async def test_complete_succeeded_persists_row_and_returns_result(
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=llm_settings,
+        llm_config_service=_build_llm_config_service(llm_settings),
     )
     llm_completion_input = build_llm_completion_input(
-        llm_type=LlmType.GPT_5_4_NANO, purpose="succeeded-purpose"
+        config_key="succeeded-config", purpose="succeeded-purpose"
     )
 
     complete_result = await llm_service.complete(llm_completion_input, auth_user)
@@ -110,7 +119,10 @@ async def test_complete_succeeded_persists_row_and_returns_result(
     assert llm_call_record.provider == LlmProviderType.OPENAI
     assert llm_call_record.model_name == "gpt-5.4-nano"
     assert llm_call_record.purpose == "succeeded-purpose"
-    assert llm_call_record.system_prompt == llm_completion_input.system_prompt
+    assert llm_call_record.system_prompt == "You are a helpful assistant."
+    assert llm_call_record.config_key == "succeeded-config"
+    assert llm_call_record.config_variation_key is None
+    assert llm_call_record.config_variation_version is None
     assert llm_call_record.user_prompt == llm_completion_input.user_prompt
     assert llm_call_record.response_text == "Hello there."
     assert llm_call_record.input_tokens == 100
@@ -143,7 +155,7 @@ async def test_complete_computes_cost_from_model_prices_billing_cached_tokens_at
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=llm_settings,
+        llm_config_service=_build_llm_config_service(llm_settings),
     )
     llm_completion_input = build_llm_completion_input(purpose="cost-purpose")
 
@@ -170,7 +182,7 @@ async def test_complete_provider_error_leaves_failed_row_with_provider_message_a
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=llm_settings,
+        llm_config_service=_build_llm_config_service(llm_settings),
     )
     llm_completion_input = build_llm_completion_input(purpose="failed-purpose")
 
@@ -220,7 +232,7 @@ async def test_complete_reason_writes_its_status_and_raises_its_exception(
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=LlmSettings(),
+        llm_config_service=_build_llm_config_service(LlmSettings()),
     )
     llm_completion_input = build_llm_completion_input()
 
@@ -247,7 +259,7 @@ async def test_complete_refusal_writes_incomplete_row_and_raises(
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=llm_settings,
+        llm_config_service=_build_llm_config_service(llm_settings),
     )
     llm_completion_input = build_llm_completion_input(purpose="refused-purpose")
 
@@ -275,7 +287,7 @@ async def test_complete_structured_parses_into_output_type(
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=llm_settings,
+        llm_config_service=_build_llm_config_service(llm_settings),
     )
     llm_completion_input = build_llm_completion_input(purpose="structured-purpose")
 
@@ -310,7 +322,7 @@ async def test_complete_logs_llm_call_completed_with_token_counts(
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=llm_settings,
+        llm_config_service=_build_llm_config_service(llm_settings),
     )
     llm_completion_input = build_llm_completion_input(purpose="logging-purpose")
 
@@ -334,9 +346,11 @@ async def test_complete_model_provider_not_registered_raises_not_implemented_err
     llm_service = LlmService(
         llm_provider_services={},
         llm_call_service=llm_call_service,
-        llm_settings=_build_llm_settings(provider=LlmProviderType.ANTHROPIC),
+        llm_config_service=_build_llm_config_service(
+            _build_llm_settings(provider=LlmProviderType.ANTHROPIC)
+        ),
     )
-    llm_completion_input = build_llm_completion_input(llm_type=LlmType.GPT_5_4_NANO)
+    llm_completion_input = build_llm_completion_input(default_llm_type=LlmType.GPT_5_4_NANO)
 
     with pytest.raises(NotImplementedError):
         await llm_service.complete(llm_completion_input, build_auth_user())
@@ -361,10 +375,16 @@ async def test_complete_passes_the_llm_types_model_settings_to_provider(
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=LlmSettings(**{llm_settings_field_name: overridden_model_settings}),
+        llm_config_service=_build_llm_config_service(
+            LlmSettings(**{llm_settings_field_name: overridden_model_settings})
+        ),
     )
     llm_completion_input = build_llm_completion_input(
-        llm_type=llm_type, system_prompt="Be brief.", user_prompt="Say hi."
+        default_llm_type=llm_type,
+        system_prompt=build_llm_system_prompt_input(
+            default_template="Be {{style}}.", variables={"style": "brief"}
+        ),
+        user_prompt="Say hi.",
     )
 
     await llm_service.complete(llm_completion_input, auth_user)
@@ -393,16 +413,20 @@ async def test_complete_structured_model_without_reasoning_effort_passes_none(
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=_build_llm_settings(max_output_tokens=1024, request_timeout_seconds=90),
+        llm_config_service=_build_llm_config_service(
+            _build_llm_settings(max_output_tokens=1024, request_timeout_seconds=90)
+        ),
     )
-    llm_completion_input = build_llm_completion_input(system_prompt=None, user_prompt="Say hi.")
+    llm_completion_input = build_llm_completion_input(
+        system_prompt=build_llm_system_prompt_input(default_template=""), user_prompt="Say hi."
+    )
 
     await llm_service.complete_structured(llm_completion_input, _SampleOutput, auth_user)
 
     assert llm_provider_service_stub.complete_structured_inputs == [
         LlmProviderCompletionInput(
             model_name="gpt-5.4-nano",
-            system_prompt=None,
+            system_prompt="",
             user_prompt="Say hi.",
             max_output_tokens=1024,
             request_timeout_seconds=90,

@@ -10,7 +10,15 @@ from libs.auth.constants import SESSION_COOKIE_NAME
 from libs.auth.results import AuthUser
 from libs.auth.services import AuthSessionService
 from libs.core.exceptions import ForbiddenException, UnauthorizedException
-from libs.llm.services import LlmCallService, LlmService, OpenAiLlmService
+from libs.llm.services import (
+    BaseLlmConfigSourceService,
+    DefaultLlmConfigSourceService,
+    LaunchDarklyLlmConfigSourceService,
+    LlmCallService,
+    LlmConfigService,
+    LlmService,
+    OpenAiLlmService,
+)
 from libs.llm.types import LlmProviderType
 from libs.permissions.types import PermissionType
 from libs.users.after_response_tasks import record_user_activity
@@ -92,10 +100,19 @@ def build_llm_service(app_state: State) -> LlmService:
         llm_settings=app_settings.llm,
     )
     llm_call_service = LlmCallService(db_session_factory=app_state.db_session_factory)
+    llm_config_source_service: BaseLlmConfigSourceService = (
+        LaunchDarklyLlmConfigSourceService()
+        if app_settings.launchdarkly.is_enabled
+        else DefaultLlmConfigSourceService()
+    )
+    llm_config_service = LlmConfigService(
+        llm_config_source_service=llm_config_source_service,
+        llm_settings=app_settings.llm,
+    )
     return LlmService(
         llm_provider_services={LlmProviderType.OPENAI: openai_llm_service},
         llm_call_service=llm_call_service,
-        llm_settings=app_settings.llm,
+        llm_config_service=llm_config_service,
     )
 
 

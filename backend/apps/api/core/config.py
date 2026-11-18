@@ -1,4 +1,6 @@
-from pydantic import Field
+from typing import Self
+
+from pydantic import Field, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -9,7 +11,7 @@ from pydantic_settings import (
 from apps.api.core.types import EnvironmentType
 from libs.auth.settings import AuthSettings
 from libs.content_engagement.settings import ContentEngagementSettings
-from libs.core.settings import BackgroundJobSettings
+from libs.core.settings import BackgroundJobSettings, LaunchDarklySettings
 from libs.credits.settings import CreditSettings
 from libs.generate_text.settings import GenerateTextSettings
 from libs.google_auth.settings import GoogleAuthSettings
@@ -33,6 +35,7 @@ class AppSettings(BaseSettings):
     google_client_id: str
     google_client_secret: str
     openai_api_key: str = Field(min_length=1)
+    launchdarkly_sdk_key: str | None = None
     railway_replica_id: str | None = None
     auth: AuthSettings = Field(default_factory=AuthSettings)
     background_jobs: BackgroundJobSettings = Field(default_factory=BackgroundJobSettings)
@@ -40,8 +43,16 @@ class AppSettings(BaseSettings):
     credits: CreditSettings = Field(default_factory=CreditSettings)
     generate_text: GenerateTextSettings = Field(default_factory=GenerateTextSettings)
     google_auth: GoogleAuthSettings = Field(default_factory=GoogleAuthSettings)
+    launchdarkly: LaunchDarklySettings = Field(default_factory=LaunchDarklySettings)
     llm: LlmSettings = Field(default_factory=LlmSettings)
     users: UserSettings = Field(default_factory=UserSettings)
+
+    @model_validator(mode="after")
+    def validate_launchdarkly_sdk_key_is_set_when_enabled(self) -> Self:
+        """Refuses to start with LaunchDarkly enabled and no SDK key."""
+        if self.launchdarkly.is_enabled and not self.launchdarkly_sdk_key:
+            raise ValueError("LAUNCHDARKLY_SDK_KEY is required when launchdarkly.is_enabled")
+        return self
 
     @classmethod
     def settings_customise_sources(

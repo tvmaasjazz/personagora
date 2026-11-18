@@ -55,3 +55,7 @@ class LlmCancelledException(LlmException, ServiceUnavailableException):
 class LlmNotFinishedException(LlmException, ServiceUnavailableException):
     reason = LlmCallReasonType.NOT_FINISHED
     message = "The LLM call did not finish"
+
+
+class LlmConfigRejectedException(UnprocessableException):
+    """A served config can't be run; the message is the reason the call falls back."""

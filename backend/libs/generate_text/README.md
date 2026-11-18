@@ -69,3 +69,10 @@ picked-up run stays `RUNNING` under a new lease. Nothing sets `CANCELLED`.
 Step (`GenerateTextStepStatusType`): `RUNNING → SUCCEEDED | FAILED | AWAITING_REVIEW`,
 and `AWAITING_REVIEW → RUNNING` when the review node reruns on resume. Nothing sets
 `SKIPPED`.
+
+## LLM configs
+
+Each step's model and system prompt can be served by LaunchDarkly under the step's config
+key (`BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER` in `constants.py`). The code default, the
+step's `LlmType` from `GenerateTextSettings` and its `*_SYSTEM_TEMPLATE`, is the fallback
+when nothing valid is served.

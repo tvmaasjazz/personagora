@@ -133,7 +133,7 @@ async def test_build_graph_all_steps_auto_approved_runs_to_end(
         "HUMANIZE": "# Generated\n\nGenerated text.",
     }
     completion_llm_types = [
-        completion_input.llm_type for completion_input in llm_service_stub.complete_inputs
+        completion_input.default_llm_type for completion_input in llm_service_stub.complete_inputs
     ]
     assert completion_llm_types == [LlmType.GPT_6_LUNA, LlmType.GPT_6_1_TERRA, LlmType.GPT_6_2_SOL]
     outline_completion_input = llm_service_stub.complete_inputs[0]
@@ -248,7 +248,7 @@ async def test_build_graph_rewrite_runs_on_its_steps_model(
     await blog_post_graph.ainvoke(reject_command, graph_run_config)
 
     completion_llm_types = [
-        completion_input.llm_type for completion_input in llm_service_stub.complete_inputs
+        completion_input.default_llm_type for completion_input in llm_service_stub.complete_inputs
     ]
     assert completion_llm_types == expected_llm_types
 
