@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ContentEngagementSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     # Engagement points per view, and per whole post read (read percents sum, over 100)
     view_weight: float = 1.0

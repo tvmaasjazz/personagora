@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class CreditSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     markup_multiplier: Decimal = Decimal("1")
     minimum_run_balance_usd: Decimal = Decimal("0.10")

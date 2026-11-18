@@ -11,7 +11,7 @@ REASONING_EFFORTS_WITHOUT_MAX = ALL_REASONING_EFFORTS - {LlmReasoningEffortType.
 
 
 class LlmModelSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     provider: LlmProviderType
     model_name: str
@@ -111,7 +111,7 @@ class Gpt62AstraLlmModelSettings(BaseOpenAiLlmModelSettings):
 
 
 class LlmSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     gpt_5_4_nano: Gpt54NanoLlmModelSettings = Field(default_factory=Gpt54NanoLlmModelSettings)
     gpt_5_6_luna: Gpt56LunaLlmModelSettings = Field(default_factory=Gpt56LunaLlmModelSettings)

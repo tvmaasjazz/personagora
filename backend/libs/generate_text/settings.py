@@ -5,19 +5,19 @@ from libs.llm.types import LlmType
 
 
 class BlogPostOutlineStepSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     standard: LlmType = LlmType.GPT_5_4_NANO
 
 
 class BlogPostDraftStepSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     standard: LlmType = LlmType.GPT_5_6_SOL
 
 
 class BlogPostHumanizeStepSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     standard: LlmType = LlmType.GPT_5_6_SOL
 
@@ -25,7 +25,7 @@ class BlogPostHumanizeStepSettings(BaseModel):
 class BlogPostStepSettings(BaseModel):
     """The model each blog post step runs on, per tier."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     outline: BlogPostOutlineStepSettings = Field(default_factory=BlogPostOutlineStepSettings)
     draft: BlogPostDraftStepSettings = Field(default_factory=BlogPostDraftStepSettings)
@@ -33,7 +33,7 @@ class BlogPostStepSettings(BaseModel):
 
 
 class GenerateTextSettings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     checkpointer: GraphCheckpointerType = GraphCheckpointerType.REDIS
     max_rewrite_passes: int = 3
