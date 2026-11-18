@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from libs.database.orm.llm_call import LlmCallOrm
 from libs.llm.inputs import LlmCompletionInput, LlmProviderCompletionInput
 from libs.llm.results import LlmCompletionResult, LlmProviderCompletionResult
-from libs.llm.settings import LlmModelSettings
+from libs.llm.settings import ALL_REASONING_EFFORTS, LlmModelSettings
 from libs.llm.types import (
     LlmCallReasonType,
     LlmCallStatusType,
@@ -129,9 +129,7 @@ def build_llm_model_settings(
     max_output_tokens: int = 2048,
     request_timeout_seconds: int = 30,
     reasoning_effort: LlmReasoningEffortType | None = None,
-    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = frozenset(
-        LlmReasoningEffortType
-    ),
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS,
     input_usd_per_million_tokens: Decimal = Decimal("2.00"),
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.50"),
     output_usd_per_million_tokens: Decimal = Decimal("8.00"),

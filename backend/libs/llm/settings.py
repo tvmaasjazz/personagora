@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -7,6 +7,7 @@ from libs.llm.types import LlmProviderType, LlmReasoningEffortType
 
 ALL_REASONING_EFFORTS = frozenset(LlmReasoningEffortType)
 REASONING_EFFORTS_WITHOUT_NONE = ALL_REASONING_EFFORTS - {LlmReasoningEffortType.NONE}
+REASONING_EFFORTS_WITHOUT_MAX = ALL_REASONING_EFFORTS - {LlmReasoningEffortType.MAX}
 
 
 class LlmModelSettings(BaseModel):
@@ -36,105 +37,73 @@ class LlmModelSettings(BaseModel):
         return self
 
 
-# One class per model, so one value can be overridden alone (LLM__GPT_5_6_SOL__MAX_OUTPUT_TOKENS)
-class Gpt54NanoLlmModelSettings(LlmModelSettings):
+class BaseOpenAiLlmModelSettings(LlmModelSettings):
+    """The defaults every OpenAI model shares unless its own class says otherwise."""
+
     provider: LlmProviderType = LlmProviderType.OPENAI
-    model_name: str = "gpt-5.4-nano"
     max_output_tokens: int = 8192
+    request_timeout_seconds: int = 120
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
+
+
+# One class per model, so one value can be overridden alone (LLM__GPT_5_6_SOL__MAX_OUTPUT_TOKENS).
+# model_name is a Literal: the prices belong to that model, so an override can't swap it
+class Gpt54NanoLlmModelSettings(BaseOpenAiLlmModelSettings):
+    model_name: Literal["gpt-5.4-nano"] = "gpt-5.4-nano"
     request_timeout_seconds: int = 30
     reasoning_effort: LlmReasoningEffortType | None = LlmReasoningEffortType.LOW
-    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = frozenset(
-        {
-            LlmReasoningEffortType.NONE,
-            LlmReasoningEffortType.LOW,
-            LlmReasoningEffortType.MEDIUM,
-            LlmReasoningEffortType.HIGH,
-            LlmReasoningEffortType.XHIGH,
-        }
-    )
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = REASONING_EFFORTS_WITHOUT_MAX
     input_usd_per_million_tokens: Decimal = Decimal("0.20")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.02")
     output_usd_per_million_tokens: Decimal = Decimal("1.25")
 
 
-class Gpt56LunaLlmModelSettings(LlmModelSettings):
-    provider: LlmProviderType = LlmProviderType.OPENAI
-    model_name: str = "gpt-5.6-luna"
-    max_output_tokens: int = 8192
-    request_timeout_seconds: int = 120
-    reasoning_effort: LlmReasoningEffortType | None = None
-    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
+class Gpt56LunaLlmModelSettings(BaseOpenAiLlmModelSettings):
+    model_name: Literal["gpt-5.6-luna"] = "gpt-5.6-luna"
     input_usd_per_million_tokens: Decimal = Decimal("0.20")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.02")
     output_usd_per_million_tokens: Decimal = Decimal("1.20")
 
 
-class Gpt56TerraLlmModelSettings(LlmModelSettings):
-    provider: LlmProviderType = LlmProviderType.OPENAI
-    model_name: str = "gpt-5.6-terra"
-    max_output_tokens: int = 8192
-    request_timeout_seconds: int = 120
-    reasoning_effort: LlmReasoningEffortType | None = None
-    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
+class Gpt56TerraLlmModelSettings(BaseOpenAiLlmModelSettings):
+    model_name: Literal["gpt-5.6-terra"] = "gpt-5.6-terra"
     input_usd_per_million_tokens: Decimal = Decimal("2.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.20")
     output_usd_per_million_tokens: Decimal = Decimal("12.00")
 
 
-class Gpt56SolLlmModelSettings(LlmModelSettings):
-    provider: LlmProviderType = LlmProviderType.OPENAI
-    model_name: str = "gpt-5.6-sol"
+class Gpt56SolLlmModelSettings(BaseOpenAiLlmModelSettings):
+    model_name: Literal["gpt-5.6-sol"] = "gpt-5.6-sol"
     max_output_tokens: int = 4096
-    request_timeout_seconds: int = 120
-    reasoning_effort: LlmReasoningEffortType | None = None
-    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
     input_usd_per_million_tokens: Decimal = Decimal("4.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.40")
     output_usd_per_million_tokens: Decimal = Decimal("20.00")
 
 
-class Gpt6LunaLlmModelSettings(LlmModelSettings):
-    provider: LlmProviderType = LlmProviderType.OPENAI
-    model_name: str = "gpt-6-luna"
-    max_output_tokens: int = 8192
-    request_timeout_seconds: int = 120
-    reasoning_effort: LlmReasoningEffortType | None = None
-    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
+class Gpt6LunaLlmModelSettings(BaseOpenAiLlmModelSettings):
+    model_name: Literal["gpt-6-luna"] = "gpt-6-luna"
     input_usd_per_million_tokens: Decimal = Decimal("0.10")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.01")
     output_usd_per_million_tokens: Decimal = Decimal("0.50")
 
 
-class Gpt61TerraLlmModelSettings(LlmModelSettings):
-    provider: LlmProviderType = LlmProviderType.OPENAI
-    model_name: str = "gpt-6.1-terra"
-    max_output_tokens: int = 8192
-    request_timeout_seconds: int = 120
-    reasoning_effort: LlmReasoningEffortType | None = None
-    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
+class Gpt61TerraLlmModelSettings(BaseOpenAiLlmModelSettings):
+    model_name: Literal["gpt-6.1-terra"] = "gpt-6.1-terra"
     input_usd_per_million_tokens: Decimal = Decimal("1.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.05")
     output_usd_per_million_tokens: Decimal = Decimal("5.00")
 
 
-class Gpt62SolLlmModelSettings(LlmModelSettings):
-    provider: LlmProviderType = LlmProviderType.OPENAI
-    model_name: str = "gpt-6.2-sol"
-    max_output_tokens: int = 8192
-    request_timeout_seconds: int = 120
-    reasoning_effort: LlmReasoningEffortType | None = None
+class Gpt62SolLlmModelSettings(BaseOpenAiLlmModelSettings):
+    model_name: Literal["gpt-6.2-sol"] = "gpt-6.2-sol"
     accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = REASONING_EFFORTS_WITHOUT_NONE
     input_usd_per_million_tokens: Decimal = Decimal("2.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.10")
     output_usd_per_million_tokens: Decimal = Decimal("10.00")
 
 
-class Gpt62AstraLlmModelSettings(LlmModelSettings):
-    provider: LlmProviderType = LlmProviderType.OPENAI
-    model_name: str = "gpt-6.2-astra"
-    max_output_tokens: int = 8192
-    request_timeout_seconds: int = 120
-    reasoning_effort: LlmReasoningEffortType | None = None
+class Gpt62AstraLlmModelSettings(BaseOpenAiLlmModelSettings):
+    model_name: Literal["gpt-6.2-astra"] = "gpt-6.2-astra"
     accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = REASONING_EFFORTS_WITHOUT_NONE
     input_usd_per_million_tokens: Decimal = Decimal("8.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.40")

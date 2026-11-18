@@ -41,7 +41,6 @@ class _SampleOutput(BaseModel):
 
 def _build_llm_settings(
     *,
-    model_name: str = "test-model",
     input_usd_per_million_tokens: Decimal = Decimal("2.00"),
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.50"),
     output_usd_per_million_tokens: Decimal = Decimal("8.00"),
@@ -53,7 +52,6 @@ def _build_llm_settings(
     return LlmSettings(
         gpt_5_4_nano=Gpt54NanoLlmModelSettings(
             provider=provider,
-            model_name=model_name,
             max_output_tokens=max_output_tokens,
             request_timeout_seconds=request_timeout_seconds,
             reasoning_effort=reasoning_effort,
@@ -110,7 +108,7 @@ async def test_complete_succeeded_persists_row_and_returns_result(
     assert llm_call_record is not None
     assert llm_call_record.status == LlmCallStatusType.SUCCEEDED
     assert llm_call_record.provider == LlmProviderType.OPENAI
-    assert llm_call_record.model_name == "test-model"
+    assert llm_call_record.model_name == "gpt-5.4-nano"
     assert llm_call_record.purpose == "succeeded-purpose"
     assert llm_call_record.system_prompt == llm_completion_input.system_prompt
     assert llm_call_record.user_prompt == llm_completion_input.user_prompt
@@ -345,51 +343,17 @@ async def test_complete_model_provider_not_registered_raises_not_implemented_err
 
 
 @pytest.mark.parametrize("llm_type", list(LlmType))
-async def test_complete_every_llm_type_resolves_to_a_model(
-    db_session: AsyncSession,
-    db_session_factory: async_sessionmaker[AsyncSession],
-    llm_type: LlmType,
-) -> None:
-    auth_user = await _insert_auth_user(db_session)
-    llm_provider_service_stub = LlmProviderServiceStub()
-    llm_call_service = LlmCallService(db_session_factory=db_session_factory)
-    llm_service = LlmService(
-        llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
-        llm_call_service=llm_call_service,
-        llm_settings=LlmSettings(),
-    )
-    llm_completion_input = build_llm_completion_input(llm_type=llm_type)
-
-    await llm_service.complete(llm_completion_input, auth_user)
-
-    assert len(llm_provider_service_stub.complete_inputs) == 1
-
-
-@pytest.mark.parametrize(
-    ("llm_type", "llm_settings_field_name"),
-    [
-        pytest.param(LlmType.GPT_5_4_NANO, "gpt_5_4_nano", id="gpt_5_4_nano"),
-        pytest.param(LlmType.GPT_5_6_LUNA, "gpt_5_6_luna", id="gpt_5_6_luna"),
-        pytest.param(LlmType.GPT_5_6_TERRA, "gpt_5_6_terra", id="gpt_5_6_terra"),
-        pytest.param(LlmType.GPT_5_6_SOL, "gpt_5_6_sol", id="gpt_5_6_sol"),
-        pytest.param(LlmType.GPT_6_LUNA, "gpt_6_luna", id="gpt_6_luna"),
-        pytest.param(LlmType.GPT_6_1_TERRA, "gpt_6_1_terra", id="gpt_6_1_terra"),
-        pytest.param(LlmType.GPT_6_2_SOL, "gpt_6_2_sol", id="gpt_6_2_sol"),
-        pytest.param(LlmType.GPT_6_2_ASTRA, "gpt_6_2_astra", id="gpt_6_2_astra"),
-    ],
-)
 async def test_complete_passes_the_llm_types_model_settings_to_provider(
     db_session: AsyncSession,
     db_session_factory: async_sessionmaker[AsyncSession],
     llm_type: LlmType,
-    llm_settings_field_name: str,
 ) -> None:
     auth_user = await _insert_auth_user(db_session)
     llm_provider_service_stub = LlmProviderServiceStub()
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
+    llm_settings_field_name = llm_type.lower()
     default_model_settings = getattr(LlmSettings(), llm_settings_field_name)
     overridden_model_settings = type(default_model_settings)(
-        model_name="overridden-model",
         max_output_tokens=777,
         request_timeout_seconds=11,
         reasoning_effort=LlmReasoningEffortType.HIGH,
@@ -407,7 +371,7 @@ async def test_complete_passes_the_llm_types_model_settings_to_provider(
 
     assert llm_provider_service_stub.complete_inputs == [
         LlmProviderCompletionInput(
-            model_name="overridden-model",
+            model_name=default_model_settings.model_name,
             system_prompt="Be brief.",
             user_prompt="Say hi.",
             max_output_tokens=777,
@@ -437,7 +401,7 @@ async def test_complete_structured_model_without_reasoning_effort_passes_none(
 
     assert llm_provider_service_stub.complete_structured_inputs == [
         LlmProviderCompletionInput(
-            model_name="test-model",
+            model_name="gpt-5.4-nano",
             system_prompt=None,
             user_prompt="Say hi.",
             max_output_tokens=1024,

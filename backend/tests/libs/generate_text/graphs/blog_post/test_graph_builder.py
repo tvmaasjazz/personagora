@@ -38,6 +38,12 @@ from tests.factories.personas import insert_persona_row
 from tests.factories.users import insert_user_row
 from tests.stubs.llm import LlmServiceStub
 
+_DISTINCT_STEP_SETTINGS = BlogPostStepSettings(
+    outline=BlogPostOutlineStepSettings(standard=LlmType.GPT_6_LUNA),
+    draft=BlogPostDraftStepSettings(standard=LlmType.GPT_6_1_TERRA),
+    humanize=BlogPostHumanizeStepSettings(standard=LlmType.GPT_6_2_SOL),
+)
+
 
 async def _insert_auth_user(db_session: AsyncSession) -> AuthUser:
     user_record = await insert_user_row(db_session)
@@ -104,11 +110,7 @@ async def test_build_graph_all_steps_auto_approved_runs_to_end(
     run_service, blog_post_graph_builder = _build_graph_builder(
         db_session_factory,
         llm_service_stub,
-        blog_post_step_settings=BlogPostStepSettings(
-            outline=BlogPostOutlineStepSettings(standard=LlmType.GPT_6_LUNA),
-            draft=BlogPostDraftStepSettings(standard=LlmType.GPT_6_1_TERRA),
-            humanize=BlogPostHumanizeStepSettings(standard=LlmType.GPT_6_2_SOL),
-        ),
+        blog_post_step_settings=_DISTINCT_STEP_SETTINGS,
     )
     generate_text_state = await _seed_state(db_session, run_service, auth_user)
     options = build_blog_post_options_input(
@@ -233,11 +235,7 @@ async def test_build_graph_rewrite_runs_on_its_steps_model(
     run_service, blog_post_graph_builder = _build_graph_builder(
         db_session_factory,
         llm_service_stub,
-        blog_post_step_settings=BlogPostStepSettings(
-            outline=BlogPostOutlineStepSettings(standard=LlmType.GPT_6_LUNA),
-            draft=BlogPostDraftStepSettings(standard=LlmType.GPT_6_1_TERRA),
-            humanize=BlogPostHumanizeStepSettings(standard=LlmType.GPT_6_2_SOL),
-        ),
+        blog_post_step_settings=_DISTINCT_STEP_SETTINGS,
     )
     generate_text_state = await _seed_state(db_session, run_service, auth_user)
     blog_post_graph = blog_post_graph_builder.build_graph(

@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from libs.llm.settings import (
+    Gpt56SolLlmModelSettings,
     Gpt62AstraLlmModelSettings,
     Gpt62SolLlmModelSettings,
 )
@@ -58,3 +59,8 @@ def test_gpt_6_2_model_settings_low_reasoning_effort_is_accepted(
     llm_model_settings = model_settings_class(reasoning_effort=LlmReasoningEffortType.LOW)
 
     assert llm_model_settings.reasoning_effort == LlmReasoningEffortType.LOW
+
+
+def test_gpt_5_6_sol_model_settings_different_model_name_raises_validation_error() -> None:
+    with pytest.raises(ValidationError):
+        Gpt56SolLlmModelSettings.model_validate({"model_name": "gpt-4o-mini"})
