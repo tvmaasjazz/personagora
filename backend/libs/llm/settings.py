@@ -15,7 +15,7 @@ class LlmModelSettings(BaseModel):
 
     provider: LlmProviderType
     model_name: str
-    max_output_tokens: int
+    max_output_tokens: int = Field(gt=0)
     request_timeout_seconds: int
     # None omits it, so the model's own default applies
     reasoning_effort: LlmReasoningEffortType | None = None
@@ -41,7 +41,7 @@ class BaseOpenAiLlmModelSettings(LlmModelSettings):
     """The defaults every OpenAI model shares unless its own class says otherwise."""
 
     provider: LlmProviderType = LlmProviderType.OPENAI
-    max_output_tokens: int = 8192
+    max_output_tokens: int = Field(default=8192, gt=0)
     request_timeout_seconds: int = 120
     accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
 
@@ -74,7 +74,7 @@ class Gpt56TerraLlmModelSettings(BaseOpenAiLlmModelSettings):
 
 class Gpt56SolLlmModelSettings(BaseOpenAiLlmModelSettings):
     model_name: Literal["gpt-5.6-sol"] = "gpt-5.6-sol"
-    max_output_tokens: int = 4096
+    max_output_tokens: int = Field(default=4096, gt=0)
     input_usd_per_million_tokens: Decimal = Decimal("4.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.40")
     output_usd_per_million_tokens: Decimal = Decimal("20.00")

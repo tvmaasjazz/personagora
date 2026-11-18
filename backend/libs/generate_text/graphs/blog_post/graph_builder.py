@@ -46,15 +46,15 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
             ) from validation_error
 
         # Every step runs its standard tier until users can pick one
-        tier = GenerateTextStepTierType.STANDARD
+        step_tier = GenerateTextStepTierType.STANDARD
         outline_llm_config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[
-            (GenerateTextNodeType.GENERATE_OUTLINE, tier)
+            (GenerateTextNodeType.GENERATE_OUTLINE, step_tier)
         ]
         draft_llm_config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[
-            (GenerateTextNodeType.GENERATE_DRAFT, tier)
+            (GenerateTextNodeType.GENERATE_DRAFT, step_tier)
         ]
         humanize_llm_config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[
-            (GenerateTextNodeType.HUMANIZE, tier)
+            (GenerateTextNodeType.HUMANIZE, step_tier)
         ]
         outline_llm_type = self._generate_text_settings.blog_post.outline.standard
         draft_llm_type = self._generate_text_settings.blog_post.draft.standard

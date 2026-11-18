@@ -1,3 +1,7 @@
+from libs.generate_text.constants import (
+    PERSONA_SECTION_VARIABLE_NAME,
+    TONE_AND_AUDIENCE_SECTION_VARIABLE_NAME,
+)
 from libs.generate_text.prompts import BaseGenerateTextPrompt
 from libs.generate_text.results import BuildPromptResult
 from libs.generate_text.states import GenerateTextState
@@ -59,6 +63,6 @@ class BlogPostOutlinePrompt(BaseGenerateTextPrompt):
             state.tone, state.target_audience
         )
         return {
-            "persona_section": persona_prompt_section,
-            "tone_and_audience_section": tone_and_audience_prompt_section,
+            PERSONA_SECTION_VARIABLE_NAME: persona_prompt_section,
+            TONE_AND_AUDIENCE_SECTION_VARIABLE_NAME: tone_and_audience_prompt_section,
         }

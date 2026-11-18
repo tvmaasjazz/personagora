@@ -3,7 +3,6 @@ from typing import Any
 
 from langgraph.types import interrupt
 
-from libs.generate_text.constants import FORMAT_RULES_VARIABLE_NAME
 from libs.generate_text.exceptions import GenerateTextOutputInvalidException
 from libs.generate_text.inputs import ResumeGenerateTextInput
 from libs.generate_text.output_formats import BaseGenerateTextOutputFormat
@@ -12,7 +11,8 @@ from libs.generate_text.results import BuildPromptResult
 from libs.generate_text.settings import GenerateTextSettings
 from libs.generate_text.states import GenerateTextState
 from libs.generate_text.types import GenerateTextNodeType, HumanDecisionType
-from libs.llm.inputs import LlmCompletionInput, LlmSystemPromptInput
+from libs.generate_text.utils import GenerateTextPromptUtils
+from libs.llm.inputs import LlmCompletionInput
 from libs.llm.services import LlmService
 from libs.llm.types import LlmType
 
@@ -123,12 +123,8 @@ class GenerateTextNodeService:
         output_format: BaseGenerateTextOutputFormat | None,
     ) -> str:
         auth_user = state.build_auth_user()
-        llm_system_prompt_input = LlmSystemPromptInput(
-            default_template=build_prompt_result.system_prompt_template,
-            variables=build_prompt_result.system_prompt_variables,
-            required_variable_names=(
-                frozenset({FORMAT_RULES_VARIABLE_NAME}) if output_format else frozenset()
-            ),
+        llm_system_prompt_input = GenerateTextPromptUtils.build_system_prompt_input(
+            build_prompt_result, output_format is not None
         )
         user_prompt = build_prompt_result.user_prompt
         max_attempts = self._generate_text_settings.max_output_format_retries + 1

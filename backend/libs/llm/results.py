@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from libs.llm.settings import LlmModelSettings
-from libs.llm.types import LlmCallReasonType
+from libs.llm.types import LlmCallReasonType, LlmProviderType, LlmReasoningEffortType
 
 
 class LlmCompletionResult(BaseModel):
@@ -47,18 +47,20 @@ class LlmConfigMessageResult(BaseModel):
     content: str
 
 
-class LlmConfigSourceResult(BaseModel):
-    """A config as a source served it, before it's checked against what we can run."""
+class GetLlmConfigResult(BaseModel):
+    """A config as a source served it, in our types, before it's checked against what we can run."""
 
     config_key: str
-    provider_name: str
+    provider: LlmProviderType
     model_name: str
-    model_parameters: dict[str, Any]
+    reasoning_effort: LlmReasoningEffortType | None
+    max_output_tokens: int | None
     messages: list[LlmConfigMessageResult]
     variation_key: str
     variation_version: int
-    # What the source needs to report the call back; only that source reads it
-    source_data: dict[str, Any]
+    # What the source needs to report the call back, in its own spellings; only that
+    # source reads it
+    source_payload: dict[str, Any]
 
 
 class ResolveLlmConfigResult(BaseModel):
@@ -68,4 +70,4 @@ class ResolveLlmConfigResult(BaseModel):
     # None when the code default is used
     variation_key: str | None
     variation_version: int | None
-    llm_config_source_result: LlmConfigSourceResult | None
+    llm_config_source_result: GetLlmConfigResult | None

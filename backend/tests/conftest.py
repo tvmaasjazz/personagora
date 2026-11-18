@@ -25,6 +25,8 @@ TEST_ENVIRONMENT_VARIABLES = {
     "OPENAI_API_KEY": "test-openai-api-key",
     # The suite's Redis database isn't 0, which Redis's checkpoint index needs
     "GENERATE_TEXT__CHECKPOINTER": "MEMORY",
+    # A developer's .env with LaunchDarkly on must never make the suite connect
+    "LAUNCHDARKLY__IS_ENABLED": "false",
 }
 TEST_DATABASE_NAME_SUFFIX = "_test"
 TEST_REDIS_DB_INDEX = 15

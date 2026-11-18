@@ -1,4 +1,8 @@
-from libs.generate_text.constants import FORMAT_RULES_VARIABLE_NAME
+from libs.generate_text.constants import (
+    FORMAT_RULES_VARIABLE_NAME,
+    PERSONA_SECTION_VARIABLE_NAME,
+    TONE_AND_AUDIENCE_SECTION_VARIABLE_NAME,
+)
 from libs.generate_text.graphs.blog_post.blog_post_body_output_format import (
     BLOG_POST_BODY_FORMAT_RULES,
 )
@@ -63,6 +67,6 @@ class BlogPostHumanizePrompt(BaseGenerateTextPrompt):
         )
         return {
             FORMAT_RULES_VARIABLE_NAME: BLOG_POST_BODY_FORMAT_RULES,
-            "persona_section": persona_prompt_section,
-            "tone_and_audience_section": tone_and_audience_prompt_section,
+            PERSONA_SECTION_VARIABLE_NAME: persona_prompt_section,
+            TONE_AND_AUDIENCE_SECTION_VARIABLE_NAME: tone_and_audience_prompt_section,
         }

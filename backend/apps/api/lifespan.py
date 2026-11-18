@@ -76,15 +76,15 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None]:
 
     # Connect to LaunchDarkly; the SDK client blocks while it waits, so it is built off the loop
     if app_settings.launchdarkly.is_enabled:
-        ld_client = await asyncio.to_thread(
+        launchdarkly_client = await asyncio.to_thread(
             LDClient,
             Config(app_settings.launchdarkly_sdk_key),
             app_settings.launchdarkly.start_wait_seconds,
         )
-        if not ld_client.is_initialized():
+        if not launchdarkly_client.is_initialized():
             # Steps use their code defaults until the client connects in the background
             logger.warning("launchdarkly_not_connected")
-        await init_client(client=ld_client)
+        await init_client(client=launchdarkly_client)
 
     logger.info(
         "api_started",

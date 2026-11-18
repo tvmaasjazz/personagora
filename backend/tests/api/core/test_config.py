@@ -106,6 +106,16 @@ def test_app_settings_llm_model_env_var_overrides_one_field_and_keeps_the_rest(
     assert loaded_app_settings.llm.gpt_5_6_sol == Gpt56SolLlmModelSettings(max_output_tokens=1234)
 
 
+def test_app_settings_llm_model_zero_max_output_tokens_env_var_raises_validation_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LLM__GPT_5_6_SOL__MAX_OUTPUT_TOKENS", "0")
+
+    with pytest.raises(ValidationError):
+        AppSettings()
+
+
 @pytest.mark.parametrize(
     "sdk_key",
     [

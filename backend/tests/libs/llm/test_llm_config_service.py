@@ -17,8 +17,8 @@ from libs.llm.settings import (
 from libs.llm.types import LlmReasoningEffortType, LlmType
 from tests.factories.auth import build_auth_user
 from tests.factories.llm import (
+    build_get_llm_config_result,
     build_llm_completion_input,
-    build_llm_config_source_result,
     build_llm_provider_completion_result,
     build_llm_system_prompt_input,
     build_resolve_llm_config_result,
@@ -60,19 +60,19 @@ async def test_resolve_config_nothing_served_returns_code_default() -> None:
     assert resolve_config_result == _build_default_resolve_llm_config_result(
         "Hello Ada and {{other}}."
     )
-    assert llm_config_source_service_stub.find_config_inputs == [("test-config-key", auth_user)]
+    assert llm_config_source_service_stub.get_config_inputs == [("test-config-key", auth_user)]
 
 
 async def test_resolve_config_served_config_returns_served_model_and_prompt() -> None:
     llm_config_source_service_stub = LlmConfigSourceServiceStub()
-    llm_config_source_result = build_llm_config_source_result(
+    llm_config_source_result = build_get_llm_config_result(
         config_key="test-config-key",
         model_name="gpt-6.2-sol",
         messages=[LlmConfigMessageResult(role="system", content="Served for {{name}}.")],
         variation_key="variation-a",
         variation_version=7,
     )
-    llm_config_source_service_stub.find_config_result = llm_config_source_result
+    llm_config_source_service_stub.get_config_result = llm_config_source_result
     llm_config_service = _build_llm_config_service(llm_config_source_service_stub)
     llm_completion_input = build_llm_completion_input(
         config_key="test-config-key",
@@ -95,20 +95,10 @@ async def test_resolve_config_served_config_returns_served_model_and_prompt() ->
     )
 
 
-@pytest.mark.parametrize(
-    ("served_reasoning_effort", "expected_reasoning_effort"),
-    [
-        pytest.param("high", LlmReasoningEffortType.HIGH, id="lower_case"),
-        pytest.param("HIGH", LlmReasoningEffortType.HIGH, id="upper_case"),
-        pytest.param("Medium", LlmReasoningEffortType.MEDIUM, id="mixed_case"),
-    ],
-)
-async def test_resolve_config_reasoning_effort_overrides_model_default(
-    served_reasoning_effort: str, expected_reasoning_effort: LlmReasoningEffortType
-) -> None:
+async def test_resolve_config_reasoning_effort_overrides_model_default() -> None:
     llm_config_source_service_stub = LlmConfigSourceServiceStub()
-    llm_config_source_service_stub.find_config_result = build_llm_config_source_result(
-        model_name="gpt-5.4-nano", model_parameters={"reasoning_effort": served_reasoning_effort}
+    llm_config_source_service_stub.get_config_result = build_get_llm_config_result(
+        model_name="gpt-5.4-nano", reasoning_effort=LlmReasoningEffortType.HIGH
     )
     llm_config_service = _build_llm_config_service(llm_config_source_service_stub)
 
@@ -117,14 +107,14 @@ async def test_resolve_config_reasoning_effort_overrides_model_default(
     )
 
     assert resolve_config_result.model_settings == Gpt54NanoLlmModelSettings(
-        max_output_tokens=1234, reasoning_effort=expected_reasoning_effort
+        max_output_tokens=1234, reasoning_effort=LlmReasoningEffortType.HIGH
     )
 
 
 async def test_resolve_config_max_output_tokens_overrides_model_default() -> None:
     llm_config_source_service_stub = LlmConfigSourceServiceStub()
-    llm_config_source_service_stub.find_config_result = build_llm_config_source_result(
-        model_name="gpt-5.4-nano", model_parameters={"max_output_tokens": 999}
+    llm_config_source_service_stub.get_config_result = build_get_llm_config_result(
+        model_name="gpt-5.4-nano", max_output_tokens=999
     )
     llm_config_service = _build_llm_config_service(llm_config_source_service_stub)
 
@@ -139,14 +129,6 @@ async def test_resolve_config_max_output_tokens_overrides_model_default() -> Non
     ("source_result_fields", "default_template", "variables", "required_names", "expected_reason"),
     [
         pytest.param(
-            {"provider_name": "Anthropic"},
-            "Hi.",
-            {},
-            frozenset[str](),
-            "provider_not_allowed",
-            id="unknown_provider",
-        ),
-        pytest.param(
             {"model_name": "gpt-4"},
             "Hi.",
             {},
@@ -155,31 +137,7 @@ async def test_resolve_config_max_output_tokens_overrides_model_default() -> Non
             id="model_not_ours",
         ),
         pytest.param(
-            {"model_parameters": {"temperature": 0.5}},
-            "Hi.",
-            {},
-            frozenset[str](),
-            "parameter_not_allowed",
-            id="unknown_parameter_key",
-        ),
-        pytest.param(
-            {"model_parameters": {"reasoning_effort": 5}},
-            "Hi.",
-            {},
-            frozenset[str](),
-            "parameter_invalid",
-            id="reasoning_effort_not_a_string",
-        ),
-        pytest.param(
-            {"model_parameters": {"reasoning_effort": "extreme"}},
-            "Hi.",
-            {},
-            frozenset[str](),
-            "parameter_invalid",
-            id="reasoning_effort_not_a_member",
-        ),
-        pytest.param(
-            {"model_name": "gpt-6.2-sol", "model_parameters": {"reasoning_effort": "none"}},
+            {"model_name": "gpt-6.2-sol", "reasoning_effort": LlmReasoningEffortType.NONE},
             "Hi.",
             {},
             frozenset[str](),
@@ -187,12 +145,20 @@ async def test_resolve_config_max_output_tokens_overrides_model_default() -> Non
             id="reasoning_effort_none_not_accepted",
         ),
         pytest.param(
-            {"model_name": "gpt-5.4-nano", "model_parameters": {"reasoning_effort": "max"}},
+            {"model_name": "gpt-5.4-nano", "reasoning_effort": LlmReasoningEffortType.MAX},
             "Hi.",
             {},
             frozenset[str](),
             "parameter_invalid",
             id="reasoning_effort_max_not_accepted",
+        ),
+        pytest.param(
+            {"max_output_tokens": 0},
+            "Hi.",
+            {},
+            frozenset[str](),
+            "parameter_invalid",
+            id="max_output_tokens_not_positive",
         ),
         pytest.param(
             {
@@ -241,7 +207,7 @@ async def test_resolve_config_rejected_config_falls_back_to_code_default(
     expected_reason: str,
 ) -> None:
     llm_config_source_service_stub = LlmConfigSourceServiceStub()
-    llm_config_source_service_stub.find_config_result = build_llm_config_source_result(
+    llm_config_source_service_stub.get_config_result = build_get_llm_config_result(
         config_key="test-config-key", variation_key="variation-a", **source_result_fields
     )
     llm_config_service = _build_llm_config_service(llm_config_source_service_stub)
@@ -291,7 +257,7 @@ async def test_track_call_without_source_result_awaits_call_and_skips_source() -
 async def test_track_call_with_source_result_delegates_to_source() -> None:
     llm_config_source_service_stub = LlmConfigSourceServiceStub()
     llm_config_service = _build_llm_config_service(llm_config_source_service_stub)
-    llm_config_source_result = build_llm_config_source_result()
+    llm_config_source_result = build_get_llm_config_result()
     auth_user = build_auth_user()
     expected_result = build_llm_provider_completion_result(content="From the call")
 
@@ -323,11 +289,11 @@ async def test_track_call_with_source_result_delegates_to_source() -> None:
         pytest.param(LlmType.GPT_6_2_ASTRA, "gpt-6.2-astra", id="gpt_6_2_astra"),
     ],
 )
-def test_find_model_settings_returns_the_types_model(
+def test_get_model_settings_returns_the_types_model(
     llm_type: LlmType, expected_model_name: str
 ) -> None:
     llm_config_service = _build_llm_config_service(LlmConfigSourceServiceStub())
 
-    model_settings = llm_config_service.find_model_settings(llm_type)
+    model_settings = llm_config_service.get_model_settings(llm_type)
 
     assert model_settings.model_name == expected_model_name

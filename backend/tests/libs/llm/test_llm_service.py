@@ -34,8 +34,8 @@ from libs.llm.types import (
 )
 from tests.factories.auth import build_auth_user
 from tests.factories.llm import (
+    build_get_llm_config_result,
     build_llm_completion_input,
-    build_llm_config_source_result,
     build_llm_provider_completion_result,
     build_llm_system_prompt_input,
 )
@@ -445,7 +445,7 @@ async def test_complete_served_config_reaches_provider_and_row_and_is_tracked(
 ) -> None:
     auth_user = await _insert_auth_user(db_session)
     llm_provider_service_stub = LlmProviderServiceStub()
-    llm_config_source_result = build_llm_config_source_result(
+    llm_config_source_result = build_get_llm_config_result(
         config_key="served-config",
         model_name="gpt-6.2-sol",
         messages=[LlmConfigMessageResult(role="system", content="Hi {{name}}, be {{style}}.")],
@@ -453,7 +453,7 @@ async def test_complete_served_config_reaches_provider_and_row_and_is_tracked(
         variation_version=7,
     )
     llm_config_source_service_stub = LlmConfigSourceServiceStub()
-    llm_config_source_service_stub.find_config_result = llm_config_source_result
+    llm_config_source_service_stub.get_config_result = llm_config_source_result
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=LlmCallService(db_session_factory=db_session_factory),
@@ -503,7 +503,7 @@ async def test_complete_served_config_failing_a_check_falls_back_to_default(
     auth_user = await _insert_auth_user(db_session)
     llm_provider_service_stub = LlmProviderServiceStub()
     llm_config_source_service_stub = LlmConfigSourceServiceStub()
-    llm_config_source_service_stub.find_config_result = build_llm_config_source_result(
+    llm_config_source_service_stub.get_config_result = build_get_llm_config_result(
         config_key="rejected-config",
         model_name="unknown-model",
         messages=[LlmConfigMessageResult(role="system", content="Served for {{name}}.")],

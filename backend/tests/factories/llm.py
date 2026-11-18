@@ -12,9 +12,9 @@ from libs.llm.inputs import (
     LlmSystemPromptInput,
 )
 from libs.llm.results import (
+    GetLlmConfigResult,
     LlmCompletionResult,
     LlmConfigMessageResult,
-    LlmConfigSourceResult,
     LlmProviderCompletionResult,
     ResolveLlmConfigResult,
 )
@@ -62,22 +62,24 @@ def build_llm_completion_input(
     )
 
 
-def build_llm_config_source_result(
+def build_get_llm_config_result(
     *,
     config_key: str = "test-config-key",
-    provider_name: str = "OpenAI",
+    provider: LlmProviderType = LlmProviderType.OPENAI,
     model_name: str = "gpt-5.4-nano",
-    model_parameters: dict[str, Any] | None = None,
+    reasoning_effort: LlmReasoningEffortType | None = None,
+    max_output_tokens: int | None = None,
     messages: list[LlmConfigMessageResult] | None = None,
     variation_key: str = "test-variation",
     variation_version: int = 1,
-    source_data: dict[str, Any] | None = None,
-) -> LlmConfigSourceResult:
-    return LlmConfigSourceResult(
+    source_payload: dict[str, Any] | None = None,
+) -> GetLlmConfigResult:
+    return GetLlmConfigResult(
         config_key=config_key,
-        provider_name=provider_name,
+        provider=provider,
         model_name=model_name,
-        model_parameters={} if model_parameters is None else model_parameters,
+        reasoning_effort=reasoning_effort,
+        max_output_tokens=max_output_tokens,
         messages=(
             [LlmConfigMessageResult(role="system", content="Served prompt.")]
             if messages is None
@@ -85,7 +87,7 @@ def build_llm_config_source_result(
         ),
         variation_key=variation_key,
         variation_version=variation_version,
-        source_data={} if source_data is None else source_data,
+        source_payload={} if source_payload is None else source_payload,
     )
 
 
@@ -96,7 +98,7 @@ def build_resolve_llm_config_result(
     system_prompt: str = "You are a helpful assistant.",
     variation_key: str | None = None,
     variation_version: int | None = None,
-    llm_config_source_result: LlmConfigSourceResult | None = None,
+    llm_config_source_result: GetLlmConfigResult | None = None,
 ) -> ResolveLlmConfigResult:
     return ResolveLlmConfigResult(
         config_key=config_key,

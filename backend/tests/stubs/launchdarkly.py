@@ -18,6 +18,10 @@ class LaunchDarklyAiSdkStub:
         self.execute_and_track_error: Exception | None = None
         # False raises before the handler runs, True raises after it returned
         self.execute_and_track_is_error_after_handler = False
+        # Raised instead of the handler's own exception when the handler raises
+        self.execute_and_track_replacement_error: Exception | None = None
+        # True returns without running the handler
+        self.execute_and_track_is_handler_skipped = False
 
     async def inspect_config(self, config_key: str, context: dict[str, Any]) -> dict[str, Any]:
         self.inspect_config_inputs.append((config_key, context))
@@ -55,7 +59,14 @@ class LaunchDarklyAiSdkStub:
             and not self.execute_and_track_is_error_after_handler
         ):
             raise self.execute_and_track_error
-        handler_output = await handler(config, "", {}, {}, [])
+        if self.execute_and_track_is_handler_skipped:
+            return {"usage": {}, "response": "", "track_data": {}}
+        try:
+            handler_output = await handler(config, "", {}, {}, [])
+        except Exception:
+            if self.execute_and_track_replacement_error is not None:
+                raise self.execute_and_track_replacement_error from None
+            raise
         self.execute_and_track_handler_outputs.append(handler_output)
         if self.execute_and_track_error is not None:
             raise self.execute_and_track_error

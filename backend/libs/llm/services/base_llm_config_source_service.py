@@ -2,22 +2,20 @@ from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
 
 from libs.auth.results import AuthUser
-from libs.llm.results import LlmConfigSourceResult, LlmProviderCompletionResult
+from libs.llm.results import GetLlmConfigResult, LlmProviderCompletionResult
 
 
 class BaseLlmConfigSourceService(ABC):
     """Serves a call's model and system prompt from outside the code, and reports the call back."""
 
     @abstractmethod
-    async def find_config(
-        self, config_key: str, auth_user: AuthUser
-    ) -> LlmConfigSourceResult | None:
+    async def get_config(self, config_key: str, auth_user: AuthUser) -> GetLlmConfigResult | None:
         """Returns the config served to this user, or None when the source serves nothing."""
 
     @abstractmethod
     async def track_call(
         self,
-        llm_config_source_result: LlmConfigSourceResult,
+        llm_config_source_result: GetLlmConfigResult,
         auth_user: AuthUser,
         call: Callable[[], Awaitable[LlmProviderCompletionResult]],
     ) -> LlmProviderCompletionResult:

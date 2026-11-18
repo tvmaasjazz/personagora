@@ -45,7 +45,11 @@ LLM_PROVIDER_TYPE_BY_LAUNCHDARKLY_PROVIDER_NAME: dict[str, LlmProviderType] = {
 }
 
 # The model parameters a served config may set
-LLM_CONFIG_PARAMETER_NAMES = frozenset({"reasoning_effort", "max_output_tokens"})
+REASONING_EFFORT_PARAMETER_NAME = "reasoning_effort"
+MAX_OUTPUT_TOKENS_PARAMETER_NAME = "max_output_tokens"
+LLM_CONFIG_PARAMETER_NAMES = frozenset(
+    {REASONING_EFFORT_PARAMETER_NAME, MAX_OUTPUT_TOKENS_PARAMETER_NAME}
+)
 
 # The role of the one message a served config may hold
 SYSTEM_MESSAGE_ROLE = "system"

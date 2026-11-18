@@ -64,3 +64,23 @@ def test_gpt_6_2_model_settings_low_reasoning_effort_is_accepted(
 def test_gpt_5_6_sol_model_settings_different_model_name_raises_validation_error() -> None:
     with pytest.raises(ValidationError):
         Gpt56SolLlmModelSettings.model_validate({"model_name": "gpt-4o-mini"})
+
+
+@pytest.mark.parametrize(
+    "model_settings_class", [Gpt56SolLlmModelSettings, Gpt62SolLlmModelSettings]
+)
+@pytest.mark.parametrize(
+    "max_output_tokens", [pytest.param(0, id="zero"), pytest.param(-1, id="negative")]
+)
+def test_llm_model_settings_non_positive_max_output_tokens_raises_validation_error(
+    model_settings_class: type[Gpt56SolLlmModelSettings | Gpt62SolLlmModelSettings],
+    max_output_tokens: int,
+) -> None:
+    with pytest.raises(ValidationError):
+        model_settings_class(max_output_tokens=max_output_tokens)
+
+
+def test_llm_model_settings_positive_max_output_tokens_is_accepted() -> None:
+    llm_model_settings = Gpt56SolLlmModelSettings(max_output_tokens=1)
+
+    assert llm_model_settings.max_output_tokens == 1

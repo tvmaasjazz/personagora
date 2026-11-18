@@ -14,7 +14,9 @@ user to approve it or send it back with feedback. The client polls the run to it
 2. The job moves the run to `RUNNING` and streams the graph, checkpointing after
    every step under the run's identity.
 3. Each node pass writes a `psg_generate_text_step` row
-   (`GenerateTextInstrumentationService`). Its LLM calls are logged to `psg_llm_call`.
+   (`GenerateTextInstrumentationService`). Its LLM calls are logged to `psg_llm_call`; each
+   step passes its config key (`BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER`) and default
+   model, as `libs/llm/README.md` describes.
 4. Credits: `complete_step` prices the step's LLM cost and charges it through
    `GenerateTextCreditService.charge_step` in the same transaction; `fail_run` refunds
    the steps after the last review (`refund_failed_run_segment`). See
@@ -69,10 +71,3 @@ picked-up run stays `RUNNING` under a new lease. Nothing sets `CANCELLED`.
 Step (`GenerateTextStepStatusType`): `RUNNING → SUCCEEDED | FAILED | AWAITING_REVIEW`,
 and `AWAITING_REVIEW → RUNNING` when the review node reruns on resume. Nothing sets
 `SKIPPED`.
-
-## LLM configs
-
-Each step's model and system prompt can be served by LaunchDarkly under the step's config
-key (`BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER` in `constants.py`). The code default, the
-step's `LlmType` from `GenerateTextSettings` and its `*_SYSTEM_TEMPLATE`, is the fallback
-when nothing valid is served.

@@ -41,6 +41,11 @@ USER_ROLE_CHANGED_ERROR_MESSAGE = (
 # template for a validated step must keep it
 FORMAT_RULES_VARIABLE_NAME = "format_rules"
 
+# The persona and tone placeholders of a step's system template. Served templates in
+# LaunchDarkly use these names, so renaming one makes every served template fall back.
+PERSONA_SECTION_VARIABLE_NAME = "persona_section"
+TONE_AND_AUDIENCE_SECTION_VARIABLE_NAME = "tone_and_audience_section"
+
 # These keys must match the LaunchDarkly configs the seed script creates
 BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER: dict[
     tuple[GenerateTextNodeType, GenerateTextStepTierType], str

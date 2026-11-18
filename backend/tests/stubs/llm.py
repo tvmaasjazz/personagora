@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from libs.auth.results import AuthUser
 from libs.llm.inputs import LlmCompletionInput, LlmProviderCompletionInput
 from libs.llm.results import (
+    GetLlmConfigResult,
     LlmCompletionResult,
-    LlmConfigSourceResult,
     LlmProviderCompletionResult,
     LlmStructuredCompletionResult,
 )
@@ -85,19 +85,17 @@ class LlmServiceStub(LlmService):
 
 class LlmConfigSourceServiceStub(BaseLlmConfigSourceService):
     def __init__(self) -> None:
-        self.find_config_inputs: list[tuple[str, AuthUser]] = []
-        self.find_config_result: LlmConfigSourceResult | None = None
-        self.track_call_inputs: list[tuple[LlmConfigSourceResult, AuthUser]] = []
+        self.get_config_inputs: list[tuple[str, AuthUser]] = []
+        self.get_config_result: GetLlmConfigResult | None = None
+        self.track_call_inputs: list[tuple[GetLlmConfigResult, AuthUser]] = []
 
-    async def find_config(
-        self, config_key: str, auth_user: AuthUser
-    ) -> LlmConfigSourceResult | None:
-        self.find_config_inputs.append((config_key, auth_user))
-        return self.find_config_result
+    async def get_config(self, config_key: str, auth_user: AuthUser) -> GetLlmConfigResult | None:
+        self.get_config_inputs.append((config_key, auth_user))
+        return self.get_config_result
 
     async def track_call(
         self,
-        llm_config_source_result: LlmConfigSourceResult,
+        llm_config_source_result: GetLlmConfigResult,
         auth_user: AuthUser,
         call: Callable[[], Awaitable[LlmProviderCompletionResult]],
     ) -> LlmProviderCompletionResult:

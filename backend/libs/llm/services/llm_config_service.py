@@ -4,15 +4,11 @@ import structlog
 from pydantic import ValidationError
 
 from libs.auth.results import AuthUser
-from libs.llm.constants import (
-    LLM_CONFIG_PARAMETER_NAMES,
-    LLM_PROVIDER_TYPE_BY_LAUNCHDARKLY_PROVIDER_NAME,
-    SYSTEM_MESSAGE_ROLE,
-)
+from libs.llm.constants import SYSTEM_MESSAGE_ROLE
 from libs.llm.exceptions import LlmConfigRejectedException
 from libs.llm.inputs import LlmCompletionInput
 from libs.llm.results import (
-    LlmConfigSourceResult,
+    GetLlmConfigResult,
     LlmProviderCompletionResult,
     ResolveLlmConfigResult,
 )
@@ -46,7 +42,7 @@ class LlmConfigService:
         self, llm_completion_input: LlmCompletionInput, auth_user: AuthUser
     ) -> ResolveLlmConfigResult:
         """Returns the served config when every check passes, else the call's code default."""
-        llm_config_source_result = await self._llm_config_source_service.find_config(
+        llm_config_source_result = await self._llm_config_source_service.get_config(
             llm_completion_input.config_key, auth_user
         )
         if llm_config_source_result is None:
@@ -78,7 +74,7 @@ class LlmConfigService:
             llm_config_source_result, auth_user, call
         )
 
-    def find_model_settings(self, llm_type: LlmType) -> LlmModelSettings:
+    def get_model_settings(self, llm_type: LlmType) -> LlmModelSettings:
         """Returns the model's settings; NotImplementedError if the type has none."""
         model_settings = self._model_settings_by_llm_type.get(llm_type)
         if model_settings is None:
@@ -91,7 +87,7 @@ class LlmConfigService:
         system_prompt_input = llm_completion_input.system_prompt
         return ResolveLlmConfigResult(
             config_key=llm_completion_input.config_key,
-            model_settings=self.find_model_settings(llm_completion_input.default_llm_type),
+            model_settings=self.get_model_settings(llm_completion_input.default_llm_type),
             system_prompt=PromptTemplateUtils.render(
                 system_prompt_input.default_template, system_prompt_input.variables
             ),
@@ -103,29 +99,24 @@ class LlmConfigService:
     def _build_served_result(
         self,
         llm_completion_input: LlmCompletionInput,
-        llm_config_source_result: LlmConfigSourceResult,
+        llm_config_source_result: GetLlmConfigResult,
     ) -> ResolveLlmConfigResult:
         """Returns the served config as a result; LlmConfigRejectedException if a check fails."""
         system_prompt_input = llm_completion_input.system_prompt
-
-        # The provider must be one we have a service for
-        provider = LLM_PROVIDER_TYPE_BY_LAUNCHDARKLY_PROVIDER_NAME.get(
-            llm_config_source_result.provider_name
-        )
-        if provider is None:
-            raise LlmConfigRejectedException("provider_not_allowed")
 
         # The model must be exactly one we price
         matching_model_settings = [
             model_settings
             for model_settings in self._model_settings_by_llm_type.values()
-            if model_settings.provider == provider
+            if model_settings.provider == llm_config_source_result.provider
             and model_settings.model_name == llm_config_source_result.model_name
         ]
         if len(matching_model_settings) != 1:
             raise LlmConfigRejectedException("model_not_allowed")
-        model_settings = self._merge_parameters(
-            matching_model_settings[0], llm_config_source_result.model_parameters
+        model_settings = self._overlay_parameters(
+            matching_model_settings[0],
+            llm_config_source_result.reasoning_effort,
+            llm_config_source_result.max_output_tokens,
         )
 
         # The prompt must be one system message
@@ -150,24 +141,18 @@ class LlmConfigService:
             llm_config_source_result=llm_config_source_result,
         )
 
-    def _merge_parameters(
-        self, model_settings: LlmModelSettings, model_parameters: dict[str, object]
+    def _overlay_parameters(
+        self,
+        model_settings: LlmModelSettings,
+        reasoning_effort: LlmReasoningEffortType | None,
+        max_output_tokens: int | None,
     ) -> LlmModelSettings:
         """Returns the model's settings with the served parameters laid over them."""
-        if not model_parameters.keys() <= LLM_CONFIG_PARAMETER_NAMES:
-            raise LlmConfigRejectedException("parameter_not_allowed")
-
         updates: dict[str, object] = {}
-        for parameter_name, parameter_value in model_parameters.items():
-            if parameter_name == "reasoning_effort":
-                if not isinstance(parameter_value, str):
-                    raise LlmConfigRejectedException("parameter_invalid")
-                try:
-                    updates[parameter_name] = LlmReasoningEffortType(parameter_value.upper())
-                except ValueError as value_error:
-                    raise LlmConfigRejectedException("parameter_invalid") from value_error
-            else:
-                updates[parameter_name] = parameter_value
+        if reasoning_effort is not None:
+            updates["reasoning_effort"] = reasoning_effort
+        if max_output_tokens is not None:
+            updates["max_output_tokens"] = max_output_tokens
 
         # Revalidate, since model_copy(update=) would skip the model's own checks
         try:
