@@ -23,6 +23,11 @@ class LlmCallOrm(BaseOrm):
         Enum(LlmProviderType, name="psg_llm_provider_type")
     )
     model_name: Mapped[str]
+    # No longer written; kept nullable so replicas on the previous release can still insert
+    # it during a deploy. A later migration drops it.
+    llm_type: Mapped[str | None] = mapped_column(
+        Enum("FAST", "STRONG", "THINKING", name="psg_llm_type")
+    )
     purpose: Mapped[str]
     system_prompt: Mapped[str | None]
     user_prompt: Mapped[str]

@@ -1,7 +1,3 @@
-CREATE TYPE psg_llm_type AS ENUM ('FAST', 'STRONG', 'THINKING');
-
-ALTER TABLE psg_llm_call ADD COLUMN llm_type psg_llm_type;
-
 -- The tier is derived from model_name, so rows written under other models become STRONG
 UPDATE psg_llm_call
 SET
@@ -10,6 +6,7 @@ SET
         WHEN model_name = 'o3' THEN 'THINKING'
         ELSE 'STRONG'
     END::psg_llm_type,
-    updated_at = (now() AT TIME ZONE 'utc');
+    updated_at = (now() AT TIME ZONE 'utc')
+WHERE llm_type IS NULL;
 
 ALTER TABLE psg_llm_call ALTER COLUMN llm_type SET NOT NULL;

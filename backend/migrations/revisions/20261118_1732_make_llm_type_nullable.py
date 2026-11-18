@@ -7,8 +7,8 @@ MIGRATION_RUNNER = MigrationRunner()
 
 
 def upgrade() -> None:
-    MIGRATION_RUNNER.run_transactional("psg_llm_call/0003_drop_llm_type.up.sql")
+    MIGRATION_RUNNER.run_transactional("psg_llm_call/0003_make_llm_type_nullable.up.sql")
 
 
 def downgrade() -> None:
-    MIGRATION_RUNNER.run_transactional("psg_llm_call/0003_drop_llm_type.down.sql")
+    MIGRATION_RUNNER.run_transactional("psg_llm_call/0003_make_llm_type_nullable.down.sql")
