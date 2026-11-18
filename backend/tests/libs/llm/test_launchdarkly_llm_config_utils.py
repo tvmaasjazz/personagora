@@ -85,7 +85,6 @@ def test_parse_config_reasoning_effort_in_any_case_is_parsed(
 @pytest.mark.parametrize(
     ("payload_fields", "expected_reason"),
     [
-        pytest.param({"is_enabled": False}, "not_enabled", id="not_enabled"),
         pytest.param({"has_config": False}, "config_or_meta_missing", id="config_missing"),
         pytest.param({"has_meta": False}, "config_or_meta_missing", id="meta_missing"),
         pytest.param(
@@ -143,7 +142,7 @@ def test_parse_config_reasoning_effort_in_any_case_is_parsed(
         ),
     ],
 )
-def test_parse_config_unusable_payload_returns_none_and_logs_reason(
+def test_parse_config_unusable_payload_returns_none_and_logs_reason_as_warning(
     payload_fields: dict[str, Any], expected_reason: str
 ) -> None:
     inspect_config_payload = build_launchdarkly_inspect_config_payload(**payload_fields)
@@ -157,8 +156,27 @@ def test_parse_config_unusable_payload_returns_none_and_logs_reason(
     assert captured_log_events == [
         {
             "event": "launchdarkly_llm_config_not_served",
-            "log_level": "info",
+            "log_level": "warning",
             "config_key": "blog-post-draft-standard",
             "reason": expected_reason,
+        }
+    ]
+
+
+def test_parse_config_not_enabled_returns_none_and_logs_reason_as_info() -> None:
+    inspect_config_payload = build_launchdarkly_inspect_config_payload(is_enabled=False)
+
+    with structlog.testing.capture_logs() as captured_log_events:
+        parse_config_result = LaunchDarklyLlmConfigUtils.parse_config(
+            "blog-post-draft-standard", inspect_config_payload
+        )
+
+    assert parse_config_result is None
+    assert captured_log_events == [
+        {
+            "event": "launchdarkly_llm_config_not_served",
+            "log_level": "info",
+            "config_key": "blog-post-draft-standard",
+            "reason": "not_enabled",
         }
     ]

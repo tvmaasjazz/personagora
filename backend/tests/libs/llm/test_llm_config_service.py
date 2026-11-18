@@ -190,6 +190,14 @@ async def test_resolve_config_max_output_tokens_overrides_model_default() -> Non
             id="placeholder_without_variable",
         ),
         pytest.param(
+            {"messages": [LlmConfigMessageResult(role="system", content="Hi {{ name }}.")]},
+            "Hi.",
+            {},
+            frozenset[str](),
+            "placeholder_malformed",
+            id="placeholder_malformed",
+        ),
+        pytest.param(
             {"messages": [LlmConfigMessageResult(role="system", content="Hi.")]},
             "Hi {{name}}.",
             {"name": "Ada"},

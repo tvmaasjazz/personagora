@@ -15,6 +15,7 @@ class LaunchDarklyAiSdkStub:
         self.create_handler_inputs: list[tuple[tuple[str, str], bool | None]] = []
         self.execute_and_track_inputs: list[dict[str, Any]] = []
         self.execute_and_track_handler_outputs: list[dict[str, Any]] = []
+        self.execute_and_track_handler_errors: list[Exception] = []
         self.execute_and_track_error: Exception | None = None
         # False raises before the handler runs, True raises after it returned
         self.execute_and_track_is_error_after_handler = False
@@ -63,7 +64,8 @@ class LaunchDarklyAiSdkStub:
             return {"usage": {}, "response": "", "track_data": {}}
         try:
             handler_output = await handler(config, "", {}, {}, [])
-        except Exception:
+        except Exception as handler_exception:
+            self.execute_and_track_handler_errors.append(handler_exception)
             if self.execute_and_track_replacement_error is not None:
                 raise self.execute_and_track_replacement_error from None
             raise

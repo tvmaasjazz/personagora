@@ -38,6 +38,8 @@ LLM_EXCEPTION_BY_REASON: dict[LlmCallReasonType, type[LlmException]] = {
 }
 
 PROMPT_TEMPLATE_PLACEHOLDER_PATTERN = re.compile(r"\{\{(\w+)\}\}")
+# Any {{...}}, so one that isn't a valid placeholder can be found
+PROMPT_TEMPLATE_BRACES_PATTERN = re.compile(r"\{\{.*?\}\}", re.DOTALL)
 
 # The providers we have a service for, by the name LaunchDarkly gives them
 LLM_PROVIDER_TYPE_BY_LAUNCHDARKLY_PROVIDER_NAME: dict[str, LlmProviderType] = {

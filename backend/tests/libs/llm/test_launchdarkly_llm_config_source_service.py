@@ -11,7 +11,7 @@ from libs.llm.results import (
 from libs.llm.services.launchdarkly_llm_config_source_service import (
     LaunchDarklyLlmConfigSourceService,
 )
-from libs.llm.types import LlmProviderType, LlmReasoningEffortType
+from libs.llm.types import LlmCallReasonType, LlmProviderType, LlmReasoningEffortType
 from libs.permissions.types import RoleType
 from tests.factories.auth import build_auth_user
 from tests.factories.llm import build_get_llm_config_result, build_llm_provider_completion_result
@@ -267,3 +267,25 @@ async def test_track_call_sdk_returns_without_running_handler_runs_call_untracke
 
     assert track_call_result == expected_result
     assert call_count == 1
+
+
+async def test_track_call_result_with_reason_returns_result_and_reports_error_without_warning(
+    launchdarkly_ai_sdk_stub: LaunchDarklyAiSdkStub,
+) -> None:
+    expected_result = build_llm_provider_completion_result(reason=LlmCallReasonType.MAX_TOKENS)
+    call_count = 0
+
+    async def call() -> LlmProviderCompletionResult:
+        nonlocal call_count
+        call_count += 1
+        return expected_result
+
+    with structlog.testing.capture_logs() as captured_log_events:
+        track_call_result = await LaunchDarklyLlmConfigSourceService(
+            launchdarkly_ai_sdk_stub
+        ).track_call(_build_get_llm_config_result_with_payload(), build_auth_user(), call)
+
+    assert track_call_result == expected_result
+    assert call_count == 1
+    assert len(launchdarkly_ai_sdk_stub.execute_and_track_handler_errors) == 1
+    assert captured_log_events == []

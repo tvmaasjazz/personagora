@@ -27,6 +27,39 @@ def test_find_placeholder_names_not_a_placeholder_returns_empty(template: str) -
     assert placeholder_names == frozenset()
 
 
+@pytest.mark.parametrize(
+    ("template", "expected_malformed_placeholders"),
+    [
+        pytest.param("Hi {{ x }}", ["{{ x }}"], id="spaced_name"),
+        pytest.param("Hi {{ldctx.key}}", ["{{ldctx.key}}"], id="dotted_name"),
+        pytest.param("Hi {{}}", ["{{}}"], id="empty_name"),
+        pytest.param(
+            "{{ a }} and {{name}} and {{b-c}}", ["{{ a }}", "{{b-c}}"], id="mixed_with_valid"
+        ),
+    ],
+)
+def test_find_malformed_placeholders_returns_each_malformed_one(
+    template: str, expected_malformed_placeholders: list[str]
+) -> None:
+    malformed_placeholders = PromptTemplateUtils.find_malformed_placeholders(template)
+
+    assert malformed_placeholders == expected_malformed_placeholders
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        pytest.param("Hi {{name}} and {{other_1}}", id="valid_placeholders"),
+        pytest.param("Hi {single}", id="single_braces"),
+        pytest.param("No placeholders", id="no_braces"),
+    ],
+)
+def test_find_malformed_placeholders_nothing_malformed_returns_empty(template: str) -> None:
+    malformed_placeholders = PromptTemplateUtils.find_malformed_placeholders(template)
+
+    assert malformed_placeholders == []
+
+
 def test_render_fills_every_known_placeholder() -> None:
     rendered_template = PromptTemplateUtils.render(
         "Hi {{first}}, meet {{second}} and {{first}}", {"first": "Ada", "second": "Grace"}

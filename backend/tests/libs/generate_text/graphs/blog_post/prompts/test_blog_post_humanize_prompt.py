@@ -197,3 +197,21 @@ def test_build_generate_prompt_renders_system_prompt_with_empty_persona_and_tone
         "sentence rhythm, cut filler and hedging, and remove anything that reads as "
         "AI-generated, while keeping the meaning and structure intact.\n\n" + EXPECTED_FORMAT_RULES
     )
+
+
+def test_build_generate_prompt_lists_required_system_prompt_variable_names() -> None:
+    state = build_generate_text_state()
+
+    build_prompt_result = BlogPostHumanizePrompt().build_generate_prompt(state)
+
+    assert build_prompt_result.required_system_prompt_variable_names == frozenset({"format_rules"})
+
+
+def test_build_rewrite_prompt_lists_required_system_prompt_variable_names() -> None:
+    state = build_generate_text_state()
+
+    build_prompt_result = BlogPostHumanizePrompt().build_rewrite_prompt(
+        state, "A draft.", "Make it shorter."
+    )
+
+    assert build_prompt_result.required_system_prompt_variable_names == frozenset({"format_rules"})

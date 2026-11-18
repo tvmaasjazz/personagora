@@ -40,6 +40,7 @@ class BlogPostHumanizePrompt(BaseGenerateTextPrompt):
         return BuildPromptResult(
             system_prompt_template=HUMANIZE_SYSTEM_TEMPLATE,
             system_prompt_variables=self._build_system_prompt_variables(state),
+            required_system_prompt_variable_names=frozenset({FORMAT_RULES_VARIABLE_NAME}),
             user_prompt=user_prompt,
         )
 
@@ -54,6 +55,7 @@ class BlogPostHumanizePrompt(BaseGenerateTextPrompt):
         return BuildPromptResult(
             system_prompt_template=HUMANIZE_SYSTEM_TEMPLATE,
             system_prompt_variables=self._build_system_prompt_variables(state),
+            required_system_prompt_variable_names=frozenset({FORMAT_RULES_VARIABLE_NAME}),
             user_prompt=user_prompt,
         )
 

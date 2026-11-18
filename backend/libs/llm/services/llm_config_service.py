@@ -126,6 +126,8 @@ class LlmConfigService:
         template = messages[0].content
 
         # The template must have a value for every placeholder and keep the required ones
+        if PromptTemplateUtils.find_malformed_placeholders(template):
+            raise LlmConfigRejectedException("placeholder_malformed")
         placeholder_names = PromptTemplateUtils.find_placeholder_names(template)
         if not placeholder_names <= system_prompt_input.variables.keys():
             raise LlmConfigRejectedException("placeholder_without_variable")

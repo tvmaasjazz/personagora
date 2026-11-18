@@ -14,6 +14,10 @@ from libs.llm.utils import LaunchDarklyLlmConfigUtils
 logger = structlog.get_logger(__name__)
 
 
+class _NoUsableOutputException(Exception):
+    """Raised inside the handler so LaunchDarkly counts a call with no usable output as an error."""
+
+
 class LaunchDarklyAiSdkProtocol(Protocol):
     """The launchdarkly_ai_server functions this source calls; the module itself satisfies it."""
 
@@ -77,6 +81,9 @@ class LaunchDarklyLlmConfigSourceService(BaseLlmConfigSourceService):
                 call_outcome["exception"] = call_exception
                 raise
             call_outcome["result"] = provider_completion_result
+            # A truncated, filtered, refused or unfinished call is an error to LaunchDarkly too
+            if provider_completion_result.reason is not None:
+                raise _NoUsableOutputException(str(provider_completion_result.reason))
             return {
                 "output": "",
                 "usage": {
@@ -102,7 +109,10 @@ class LaunchDarklyLlmConfigSourceService(BaseLlmConfigSourceService):
             )
         except Exception as tracking_exception:
             # The SDK re-raises the provider's own error, which isn't a tracking failure
-            if tracking_exception is not call_outcome.get("exception"):
+            is_call_failure = isinstance(tracking_exception, _NoUsableOutputException) or (
+                tracking_exception is call_outcome.get("exception")
+            )
+            if not is_call_failure:
                 logger.warning(
                     "launchdarkly_llm_call_tracking_failed",
                     config_key=llm_config_source_result.config_key,

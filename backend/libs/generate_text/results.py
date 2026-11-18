@@ -91,6 +91,8 @@ class FindLlmCallRollupResult(BaseModel):
 class BuildPromptResult(BaseModel):
     system_prompt_template: str
     system_prompt_variables: dict[str, str]
+    # Placeholders a served system template must keep, such as the output format's rules
+    required_system_prompt_variable_names: frozenset[str] = frozenset()
     user_prompt: str
 
 

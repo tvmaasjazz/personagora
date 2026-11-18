@@ -13,11 +13,11 @@ import argparse
 import asyncio
 from uuid import UUID
 
-import launchdarkly_ai_server
-from launchdarkly_ai_server import init_client
-from ldclient import Config, LDClient
+from ldclient import LDClient
 
 from apps.api.core.config import AppSettings
+from apps.api.core.dependencies import build_llm_config_source_service
+from apps.api.lifespan import connect_launchdarkly, disconnect_launchdarkly
 from libs.auth.results import AuthUser
 from libs.generate_text.constants import BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER
 from libs.generate_text.graphs.blog_post.prompts.blog_post_draft_prompt import BlogPostDraftPrompt
@@ -30,14 +30,8 @@ from libs.generate_text.graphs.blog_post.prompts.blog_post_outline_prompt import
 from libs.generate_text.prompts import BaseGenerateTextPrompt
 from libs.generate_text.states import GenerateTextState
 from libs.generate_text.types import GenerateTextNodeType, GenerateTextStepTierType
-from libs.generate_text.utils import GenerateTextPromptUtils
-from libs.llm.inputs import LlmCompletionInput
-from libs.llm.services import (
-    BaseLlmConfigSourceService,
-    DefaultLlmConfigSourceService,
-    LaunchDarklyLlmConfigSourceService,
-    LlmConfigService,
-)
+from libs.llm.inputs import LlmCompletionInput, LlmSystemPromptInput
+from libs.llm.services import LlmConfigService
 from libs.llm.types import LlmType
 from libs.permissions.types import RoleType
 
@@ -86,23 +80,12 @@ async def _check() -> None:
         permissions=frozenset(),
     )
 
-    llm_config_source_service: BaseLlmConfigSourceService
+    launchdarkly_client: LDClient | None = None
     if app_settings.launchdarkly.is_enabled:
-        assert app_settings.launchdarkly_sdk_key is not None
-        launchdarkly_client = await asyncio.to_thread(
-            LDClient,
-            Config(app_settings.launchdarkly_sdk_key),
-            app_settings.launchdarkly.start_wait_seconds,
-        )
-        if not launchdarkly_client.is_initialized():
-            print("LaunchDarkly did not connect in time; steps will show their code defaults")
-        await init_client(client=launchdarkly_client)
-        llm_config_source_service = LaunchDarklyLlmConfigSourceService(
-            launchdarkly_ai_sdk=launchdarkly_ai_server
-        )
+        launchdarkly_client = await connect_launchdarkly(app_settings)
     else:
         print("LaunchDarkly is off (set LAUNCHDARKLY__IS_ENABLED=true); showing code defaults")
-        llm_config_source_service = DefaultLlmConfigSourceService()
+    llm_config_source_service = build_llm_config_source_service(app_settings)
     llm_config_service = LlmConfigService(llm_config_source_service, app_settings.llm)
 
     state = _build_sample_state(auth_user)
@@ -111,22 +94,25 @@ async def _check() -> None:
     outline_llm_type = step_settings.outline.standard
     draft_llm_type = step_settings.draft.standard
     humanize_llm_type = step_settings.humanize.standard
-    steps: list[tuple[GenerateTextNodeType, BaseGenerateTextPrompt, LlmType, bool]] = [
-        (GenerateTextNodeType.GENERATE_OUTLINE, BlogPostOutlinePrompt(), outline_llm_type, False),
-        (GenerateTextNodeType.GENERATE_DRAFT, BlogPostDraftPrompt(), draft_llm_type, True),
-        (GenerateTextNodeType.HUMANIZE, BlogPostHumanizePrompt(), humanize_llm_type, True),
+    steps: list[tuple[GenerateTextNodeType, BaseGenerateTextPrompt, LlmType]] = [
+        (GenerateTextNodeType.GENERATE_OUTLINE, BlogPostOutlinePrompt(), outline_llm_type),
+        (GenerateTextNodeType.GENERATE_DRAFT, BlogPostDraftPrompt(), draft_llm_type),
+        (GenerateTextNodeType.HUMANIZE, BlogPostHumanizePrompt(), humanize_llm_type),
     ]
     try:
-        # Draft and humanize have an output format, outline has none, as in the graph
-        for node_type, prompt, default_llm_type, has_output_format in steps:
+        for node_type, prompt, default_llm_type in steps:
             config_key = BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER[(node_type, step_tier)]
             build_prompt_result = prompt.build_generate_prompt(state)
             llm_completion_input = LlmCompletionInput(
                 config_key=config_key,
                 default_llm_type=default_llm_type,
                 purpose="llm_config_check",
-                system_prompt=GenerateTextPromptUtils.build_system_prompt_input(
-                    build_prompt_result, has_output_format
+                system_prompt=LlmSystemPromptInput(
+                    default_template=build_prompt_result.system_prompt_template,
+                    variables=build_prompt_result.system_prompt_variables,
+                    required_variable_names=(
+                        build_prompt_result.required_system_prompt_variable_names
+                    ),
                 ),
                 user_prompt=build_prompt_result.user_prompt,
             )
@@ -144,8 +130,8 @@ async def _check() -> None:
             print(f"variation: {variation_key} (version {variation_version})")
             print(f"system prompt:\n{resolve_llm_config_result.system_prompt}")
     finally:
-        if app_settings.launchdarkly.is_enabled:
-            await launchdarkly_ai_server.shutdown()
+        if launchdarkly_client is not None:
+            await disconnect_launchdarkly(launchdarkly_client)
 
 
 if __name__ == "__main__":

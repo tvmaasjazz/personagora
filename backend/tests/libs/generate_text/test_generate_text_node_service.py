@@ -4,6 +4,7 @@ from libs.generate_text.exceptions import GenerateTextOutputInvalidException
 from libs.generate_text.graphs.blog_post.blog_post_body_output_format import (
     BlogPostBodyOutputFormat,
 )
+from libs.generate_text.results import BuildPromptResult
 from libs.generate_text.services.generate_text_node_service import GenerateTextNodeService
 from libs.generate_text.settings import GenerateTextSettings
 from libs.generate_text.types import GenerateTextNodeType
@@ -266,59 +267,74 @@ async def test_build_generate_node_max_output_format_retries_zero_calls_once_the
 
 
 @pytest.mark.parametrize(
-    ("output_format", "expected_required_variable_names"),
+    "required_variable_names",
     [
-        pytest.param(BlogPostBodyOutputFormat(), frozenset({"format_rules"}), id="with_format"),
-        pytest.param(None, frozenset(), id="without_format"),
+        pytest.param(frozenset({"format_rules"}), id="with_required_names"),
+        pytest.param(frozenset[str](), id="without_required_names"),
     ],
 )
-async def test_build_generate_node_requires_format_rules_only_with_output_format(
-    output_format: BlogPostBodyOutputFormat | None,
-    expected_required_variable_names: frozenset[str],
+async def test_build_generate_node_requires_the_names_its_prompt_lists(
+    required_variable_names: frozenset[str],
 ) -> None:
     llm_service_stub = LlmServiceStub()
     llm_service_stub.complete_result = build_llm_completion_result(content=VALID_BODY_TEXT)
     generate_text_node_service = GenerateTextNodeService(
         llm_service=llm_service_stub, generate_text_settings=GenerateTextSettings()
+    )
+    generate_text_prompt_stub = GenerateTextPromptStub()
+    generate_text_prompt_stub.build_generate_prompt_result = BuildPromptResult(
+        system_prompt_template="Hi {{name}}.",
+        system_prompt_variables={"name": "Ada"},
+        required_system_prompt_variable_names=required_variable_names,
+        user_prompt="Write.",
     )
     generate_node = generate_text_node_service.build_generate_node(
         GenerateTextNodeType.GENERATE_DRAFT,
         "test-config-key",
         LlmType.GPT_5_6_SOL,
-        GenerateTextPromptStub(),
-        output_format,
+        generate_text_prompt_stub,
+        None,
     )
     generate_text_state = build_generate_text_state()
 
     await generate_node(generate_text_state)
 
-    sent_system_prompt = llm_service_stub.complete_inputs[0].system_prompt
-    assert sent_system_prompt.required_variable_names == expected_required_variable_names
+    assert llm_service_stub.complete_inputs[0].system_prompt == LlmSystemPromptInput(
+        default_template="Hi {{name}}.",
+        variables={"name": "Ada"},
+        required_variable_names=required_variable_names,
+    )
 
 
 @pytest.mark.parametrize(
-    ("output_format", "expected_required_variable_names"),
+    "required_variable_names",
     [
-        pytest.param(BlogPostBodyOutputFormat(), frozenset({"format_rules"}), id="with_format"),
-        pytest.param(None, frozenset(), id="without_format"),
+        pytest.param(frozenset({"format_rules"}), id="with_required_names"),
+        pytest.param(frozenset[str](), id="without_required_names"),
     ],
 )
-async def test_build_rewrite_node_requires_format_rules_only_with_output_format(
-    output_format: BlogPostBodyOutputFormat | None,
-    expected_required_variable_names: frozenset[str],
+async def test_build_rewrite_node_requires_the_names_its_prompt_lists(
+    required_variable_names: frozenset[str],
 ) -> None:
     llm_service_stub = LlmServiceStub()
     llm_service_stub.complete_result = build_llm_completion_result(content=VALID_BODY_TEXT)
     generate_text_node_service = GenerateTextNodeService(
         llm_service=llm_service_stub, generate_text_settings=GenerateTextSettings()
+    )
+    generate_text_prompt_stub = GenerateTextPromptStub()
+    generate_text_prompt_stub.build_rewrite_prompt_result = BuildPromptResult(
+        system_prompt_template="Hi {{name}}.",
+        system_prompt_variables={"name": "Ada"},
+        required_system_prompt_variable_names=required_variable_names,
+        user_prompt="Rewrite.",
     )
     rewrite_node = generate_text_node_service.build_rewrite_node(
         GenerateTextNodeType.REWRITE_DRAFT,
         "test-config-key",
         LlmType.GPT_5_6_SOL,
         GenerateTextNodeType.REVIEW_DRAFT,
-        GenerateTextPromptStub(),
-        output_format,
+        generate_text_prompt_stub,
+        None,
     )
     generate_text_state = build_generate_text_state(
         step_outputs={"GENERATE_DRAFT": "A draft."},
@@ -327,8 +343,11 @@ async def test_build_rewrite_node_requires_format_rules_only_with_output_format(
 
     await rewrite_node(generate_text_state)
 
-    sent_system_prompt = llm_service_stub.complete_inputs[0].system_prompt
-    assert sent_system_prompt.required_variable_names == expected_required_variable_names
+    assert llm_service_stub.complete_inputs[0].system_prompt == LlmSystemPromptInput(
+        default_template="Hi {{name}}.",
+        variables={"name": "Ada"},
+        required_variable_names=required_variable_names,
+    )
 
 
 async def test_build_rewrite_node_sends_its_steps_config_key_and_default_llm_type() -> None:

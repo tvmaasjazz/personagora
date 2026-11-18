@@ -176,3 +176,21 @@ def test_build_generate_prompt_renders_system_prompt_with_empty_persona_and_tone
         "Write a complete blog post draft from the outline and brief provided. Write the "
         "full prose, ready for review — not another outline.\n\n" + EXPECTED_FORMAT_RULES
     )
+
+
+def test_build_generate_prompt_lists_required_system_prompt_variable_names() -> None:
+    state = build_generate_text_state()
+
+    build_prompt_result = BlogPostDraftPrompt().build_generate_prompt(state)
+
+    assert build_prompt_result.required_system_prompt_variable_names == frozenset({"format_rules"})
+
+
+def test_build_rewrite_prompt_lists_required_system_prompt_variable_names() -> None:
+    state = build_generate_text_state()
+
+    build_prompt_result = BlogPostDraftPrompt().build_rewrite_prompt(
+        state, "A draft.", "Make it shorter."
+    )
+
+    assert build_prompt_result.required_system_prompt_variable_names == frozenset({"format_rules"})

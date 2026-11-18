@@ -23,7 +23,10 @@ class LaunchDarklyLlmConfigUtils:
     ) -> GetLlmConfigResult | None:
         """Returns the served config in our types, or None (logged with why) when it can't be."""
         if not inspect_config_result.get("enabled"):
-            return LaunchDarklyLlmConfigUtils._not_served(config_key, "not_enabled")
+            logger.info(
+                "launchdarkly_llm_config_not_served", config_key=config_key, reason="not_enabled"
+            )
+            return None
         config = inspect_config_result.get("config")
         meta = inspect_config_result.get("meta")
         if not isinstance(config, dict) or not isinstance(meta, dict):
@@ -100,4 +103,4 @@ class LaunchDarklyLlmConfigUtils:
 
     @staticmethod
     def _not_served(config_key: str, reason: str) -> None:
-        logger.info("launchdarkly_llm_config_not_served", config_key=config_key, reason=reason)
+        logger.warning("launchdarkly_llm_config_not_served", config_key=config_key, reason=reason)

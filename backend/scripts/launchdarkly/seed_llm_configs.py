@@ -93,7 +93,10 @@ def _seed_config(
 
     # The variation
     variations = _get_variations(config_body)
-    if not variations:
+    default_variation = next(
+        (variation for variation in variations if variation.get("key") == VARIATION_KEY), None
+    )
+    if default_variation is None:
         http_response = http_client.post(
             f"{config_url}/variations",
             json={
@@ -109,8 +112,8 @@ def _seed_config(
         variation_body: dict[str, Any] = http_response.json()
         variation_id = _get_variation_id(variation_body)
     else:
-        print(f"{config_key}: variation exists")
-        variation_id = _get_variation_id(variations[0])
+        print(f"{config_key}: variation '{VARIATION_KEY}' exists")
+        variation_id = _get_variation_id(default_variation)
 
     # The environment's fallthrough
     http_response = http_client.get(f"{config_url}/targeting")

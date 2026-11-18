@@ -42,13 +42,15 @@ default), logs the call to `psg_llm_call`, asks the provider, and prices the tok
 - `LaunchDarklyLlmConfigUtils`: parses a served config into our types.
 - `LlmUtils`: status, exception and cost for a call.
 - `OpenAiLlmUtils`: OpenAI request arguments and response and error mapping.
-- `PromptTemplateUtils`: finds and fills `{{name}}` placeholders.
+- `PromptTemplateUtils`: finds, checks and fills `{{name}}` placeholders.
 
 ## LaunchDarkly
 
-`launchdarkly.is_enabled` is off by default. When on, `apps/api/lifespan.py` builds the
-`LDClient` off the event loop (it needs `LAUNCHDARKLY_SDK_KEY`), hands it to the AI SDK
-with `init_client`, and the source service uses the SDK. A client that hasn't connected
+`launchdarkly.is_enabled` is off by default. When on, `connect_launchdarkly` in
+`apps/api/lifespan.py` builds the `LDClient` off the event loop (it needs
+`LAUNCHDARKLY_SDK_KEY`), hands it to the AI SDK with `init_client`, and
+`build_llm_config_source_service` picks the source service that uses the SDK. A call with
+no usable output (truncated, filtered, refused) is reported to LaunchDarkly as an error. A client that hasn't connected
 leaves every call on its code default. When off, `DefaultLlmConfigSourceService` is used.
 
 Two scripts, run from `backend/`:

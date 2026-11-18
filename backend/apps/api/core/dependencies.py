@@ -93,6 +93,13 @@ def require_permissions(*permission_types: PermissionType) -> Callable[[AuthUser
     return check_permissions
 
 
+def build_llm_config_source_service(app_settings: AppSettings) -> BaseLlmConfigSourceService:
+    """Returns the LaunchDarkly config source when it is enabled, else the code-default one."""
+    if app_settings.launchdarkly.is_enabled:
+        return LaunchDarklyLlmConfigSourceService(launchdarkly_ai_sdk=launchdarkly_ai_server)
+    return DefaultLlmConfigSourceService()
+
+
 def build_llm_service(app_state: State) -> LlmService:
     """Builds the LLM service from app state, so lifespan and routes can both use it."""
     app_settings: AppSettings = app_state.settings
@@ -101,11 +108,7 @@ def build_llm_service(app_state: State) -> LlmService:
         llm_settings=app_settings.llm,
     )
     llm_call_service = LlmCallService(db_session_factory=app_state.db_session_factory)
-    llm_config_source_service: BaseLlmConfigSourceService = (
-        LaunchDarklyLlmConfigSourceService(launchdarkly_ai_sdk=launchdarkly_ai_server)
-        if app_settings.launchdarkly.is_enabled
-        else DefaultLlmConfigSourceService()
-    )
+    llm_config_source_service = build_llm_config_source_service(app_settings)
     llm_config_service = LlmConfigService(
         llm_config_source_service=llm_config_source_service,
         llm_settings=app_settings.llm,

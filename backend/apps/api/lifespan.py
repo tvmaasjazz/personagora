@@ -41,6 +41,29 @@ def build_worker_id(app_settings: AppSettings) -> str:
     return f"{host_name[:WORKER_ID_REPLICA_LENGTH]}-pid{os.getpid()}-{random_suffix}"
 
 
+async def connect_launchdarkly(app_settings: AppSettings) -> LDClient:
+    """Builds the LaunchDarkly client off the event loop and hands it to the AI SDK."""
+    assert app_settings.launchdarkly_sdk_key is not None
+    launchdarkly_client = await asyncio.to_thread(
+        LDClient,
+        Config(app_settings.launchdarkly_sdk_key),
+        app_settings.launchdarkly.start_wait_seconds,
+    )
+    if not launchdarkly_client.is_initialized():
+        # Steps use their code defaults until the client connects in the background
+        logger.warning("launchdarkly_not_connected")
+    await init_client(client=launchdarkly_client)
+    return launchdarkly_client
+
+
+async def disconnect_launchdarkly(launchdarkly_client: LDClient) -> None:
+    """Closes the client off the event loop, flushing its events, then the AI SDK's own."""
+    # Closing blocks while it flushes; the AI SDK's shutdown then finds the client already
+    # closed and returns at once
+    await asyncio.to_thread(launchdarkly_client.close)
+    await launchdarkly_ai_server.shutdown()
+
+
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None]:
     # Create the app-scoped resources
@@ -74,17 +97,10 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None]:
     else:
         fastapi_app.state.graph_checkpointer = InMemorySaver()
 
-    # Connect to LaunchDarkly; the SDK client blocks while it waits, so it is built off the loop
+    # Connect to LaunchDarkly
+    launchdarkly_client = None
     if app_settings.launchdarkly.is_enabled:
-        launchdarkly_client = await asyncio.to_thread(
-            LDClient,
-            Config(app_settings.launchdarkly_sdk_key),
-            app_settings.launchdarkly.start_wait_seconds,
-        )
-        if not launchdarkly_client.is_initialized():
-            # Steps use their code defaults until the client connects in the background
-            logger.warning("launchdarkly_not_connected")
-        await init_client(client=launchdarkly_client)
+        launchdarkly_client = await connect_launchdarkly(app_settings)
 
     logger.info(
         "api_started",
@@ -127,8 +143,8 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None]:
         if event_loop_monitor_task is not None:
             event_loop_monitor_task.cancel()
             await asyncio.gather(event_loop_monitor_task, return_exceptions=True)
-        if app_settings.launchdarkly.is_enabled:
-            await launchdarkly_ai_server.shutdown()
+        if launchdarkly_client is not None:
+            await disconnect_launchdarkly(launchdarkly_client)
         # Close the clients and the engine
         await http_client.aclose()
         await redis_client.aclose()
