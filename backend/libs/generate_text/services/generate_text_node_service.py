@@ -3,6 +3,7 @@ from typing import Any
 
 from langgraph.types import interrupt
 
+from libs.generate_text.constants import FORMAT_RULES_VARIABLE_NAME
 from libs.generate_text.exceptions import GenerateTextOutputInvalidException
 from libs.generate_text.inputs import ResumeGenerateTextInput
 from libs.generate_text.output_formats import BaseGenerateTextOutputFormat
@@ -11,7 +12,7 @@ from libs.generate_text.results import BuildPromptResult
 from libs.generate_text.settings import GenerateTextSettings
 from libs.generate_text.states import GenerateTextState
 from libs.generate_text.types import GenerateTextNodeType, HumanDecisionType
-from libs.llm.inputs import LlmCompletionInput
+from libs.llm.inputs import LlmCompletionInput, LlmSystemPromptInput
 from libs.llm.services import LlmService
 from libs.llm.types import LlmType
 
@@ -37,7 +38,8 @@ class GenerateTextNodeService:
     def build_generate_node(
         self,
         node_type: GenerateTextNodeType,
-        llm_type: LlmType,
+        llm_config_key: str,
+        default_llm_type: LlmType,
         prompt: BaseGenerateTextPrompt,
         output_format: BaseGenerateTextOutputFormat | None = None,
     ) -> GenerateTextNode:
@@ -46,7 +48,12 @@ class GenerateTextNodeService:
         async def generate_node(state: GenerateTextState) -> dict[str, Any]:
             build_prompt_result = prompt.build_generate_prompt(state)
             output_text = await self._complete_with_output_format(
-                state, node_type, llm_type, build_prompt_result, output_format
+                state,
+                node_type,
+                llm_config_key,
+                default_llm_type,
+                build_prompt_result,
+                output_format,
             )
             updated_step_outputs = {**state.step_outputs, node_type.value: output_text}
             return {"step_outputs": updated_step_outputs}
@@ -56,7 +63,8 @@ class GenerateTextNodeService:
     def build_rewrite_node(
         self,
         node_type: GenerateTextNodeType,
-        llm_type: LlmType,
+        llm_config_key: str,
+        default_llm_type: LlmType,
         reviewed_node_type: GenerateTextNodeType,
         prompt: BaseGenerateTextPrompt,
         output_format: BaseGenerateTextOutputFormat | None = None,
@@ -68,7 +76,12 @@ class GenerateTextNodeService:
             feedback_text = state.step_feedback.get(reviewed_node_type.value, "")
             build_prompt_result = prompt.build_rewrite_prompt(state, previous_output, feedback_text)
             output_text = await self._complete_with_output_format(
-                state, node_type, llm_type, build_prompt_result, output_format
+                state,
+                node_type,
+                llm_config_key,
+                default_llm_type,
+                build_prompt_result,
+                output_format,
             )
             updated_step_outputs = {**state.step_outputs, node_type.value: output_text}
             previous_rewrite_count = state.rewrite_counts.get(reviewed_node_type.value, 0)
@@ -104,12 +117,19 @@ class GenerateTextNodeService:
         self,
         state: GenerateTextState,
         node_type: GenerateTextNodeType,
-        llm_type: LlmType,
+        llm_config_key: str,
+        default_llm_type: LlmType,
         build_prompt_result: BuildPromptResult,
         output_format: BaseGenerateTextOutputFormat | None,
     ) -> str:
         auth_user = state.build_auth_user()
-        system_prompt = build_prompt_result.system_prompt
+        llm_system_prompt_input = LlmSystemPromptInput(
+            default_template=build_prompt_result.system_prompt_template,
+            variables=build_prompt_result.system_prompt_variables,
+            required_variable_names=(
+                frozenset({FORMAT_RULES_VARIABLE_NAME}) if output_format else frozenset()
+            ),
+        )
         user_prompt = build_prompt_result.user_prompt
         max_attempts = self._generate_text_settings.max_output_format_retries + 1
 
@@ -117,9 +137,10 @@ class GenerateTextNodeService:
         for attempt_number in range(1, max_attempts + 1):
             # Call the LLM
             llm_completion_input = LlmCompletionInput(
-                llm_type=llm_type,
+                config_key=llm_config_key,
+                default_llm_type=default_llm_type,
                 purpose=node_type.value,
-                system_prompt=system_prompt,
+                system_prompt=llm_system_prompt_input,
                 user_prompt=user_prompt,
                 run_id=state.generate_text_run_id,
                 step_id=state.current_step_id,

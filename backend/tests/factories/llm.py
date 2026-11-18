@@ -1,12 +1,23 @@
 from decimal import Decimal
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from libs.database.orm.llm_call import LlmCallOrm
-from libs.llm.inputs import LlmCompletionInput, LlmProviderCompletionInput
-from libs.llm.results import LlmCompletionResult, LlmProviderCompletionResult
+from libs.llm.inputs import (
+    LlmCompletionInput,
+    LlmProviderCompletionInput,
+    LlmSystemPromptInput,
+)
+from libs.llm.results import (
+    LlmCompletionResult,
+    LlmConfigMessageResult,
+    LlmConfigSourceResult,
+    LlmProviderCompletionResult,
+    ResolveLlmConfigResult,
+)
 from libs.llm.settings import ALL_REASONING_EFFORTS, LlmModelSettings
 from libs.llm.types import (
     LlmCallReasonType,
@@ -17,18 +28,83 @@ from libs.llm.types import (
 )
 
 
+def build_llm_system_prompt_input(
+    *,
+    default_template: str = "You are a helpful assistant.",
+    variables: dict[str, str] | None = None,
+    required_variable_names: frozenset[str] = frozenset(),
+) -> LlmSystemPromptInput:
+    return LlmSystemPromptInput(
+        default_template=default_template,
+        variables={} if variables is None else variables,
+        required_variable_names=required_variable_names,
+    )
+
+
 def build_llm_completion_input(
     *,
-    llm_type: LlmType = LlmType.GPT_5_4_NANO,
+    config_key: str = "test-config-key",
+    default_llm_type: LlmType = LlmType.GPT_5_4_NANO,
     purpose: str = "test_purpose",
-    system_prompt: str | None = "You are a helpful assistant.",
+    system_prompt: LlmSystemPromptInput | None = None,
     user_prompt: str = "Say hello.",
+    run_id: int | None = None,
+    step_id: int | None = None,
 ) -> LlmCompletionInput:
     return LlmCompletionInput(
-        llm_type=llm_type,
+        config_key=config_key,
+        default_llm_type=default_llm_type,
         purpose=purpose,
-        system_prompt=system_prompt,
+        system_prompt=build_llm_system_prompt_input() if system_prompt is None else system_prompt,
         user_prompt=user_prompt,
+        run_id=run_id,
+        step_id=step_id,
+    )
+
+
+def build_llm_config_source_result(
+    *,
+    config_key: str = "test-config-key",
+    provider_name: str = "OpenAI",
+    model_name: str = "gpt-5.4-nano",
+    model_parameters: dict[str, Any] | None = None,
+    messages: list[LlmConfigMessageResult] | None = None,
+    variation_key: str = "test-variation",
+    variation_version: int = 1,
+    source_data: dict[str, Any] | None = None,
+) -> LlmConfigSourceResult:
+    return LlmConfigSourceResult(
+        config_key=config_key,
+        provider_name=provider_name,
+        model_name=model_name,
+        model_parameters={} if model_parameters is None else model_parameters,
+        messages=(
+            [LlmConfigMessageResult(role="system", content="Served prompt.")]
+            if messages is None
+            else messages
+        ),
+        variation_key=variation_key,
+        variation_version=variation_version,
+        source_data={} if source_data is None else source_data,
+    )
+
+
+def build_resolve_llm_config_result(
+    *,
+    config_key: str = "test-config-key",
+    model_settings: LlmModelSettings | None = None,
+    system_prompt: str = "You are a helpful assistant.",
+    variation_key: str | None = None,
+    variation_version: int | None = None,
+    llm_config_source_result: LlmConfigSourceResult | None = None,
+) -> ResolveLlmConfigResult:
+    return ResolveLlmConfigResult(
+        config_key=config_key,
+        model_settings=build_llm_model_settings() if model_settings is None else model_settings,
+        system_prompt=system_prompt,
+        variation_key=variation_key,
+        variation_version=variation_version,
+        llm_config_source_result=llm_config_source_result,
     )
 
 

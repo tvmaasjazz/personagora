@@ -1,3 +1,5 @@
+import re
+
 from libs.llm.exceptions import (
     LlmCancelledException,
     LlmContentFilteredException,
@@ -9,7 +11,7 @@ from libs.llm.exceptions import (
     LlmTruncatedException,
     LlmUnavailableException,
 )
-from libs.llm.types import LlmCallReasonType, LlmCallStatusType
+from libs.llm.types import LlmCallReasonType, LlmCallStatusType, LlmProviderType
 
 # A call that produced no usable output is INCOMPLETE when the provider answered and FAILED
 # when it didn't. Both maps must cover every LlmCallReasonType member.
@@ -34,3 +36,16 @@ LLM_EXCEPTION_BY_REASON: dict[LlmCallReasonType, type[LlmException]] = {
     LlmCallReasonType.CANCELLED: LlmCancelledException,
     LlmCallReasonType.NOT_FINISHED: LlmNotFinishedException,
 }
+
+PROMPT_TEMPLATE_PLACEHOLDER_PATTERN = re.compile(r"\{\{(\w+)\}\}")
+
+# The providers we have a service for, by the name LaunchDarkly gives them
+LLM_PROVIDER_TYPE_BY_LAUNCHDARKLY_PROVIDER_NAME: dict[str, LlmProviderType] = {
+    "OpenAI": LlmProviderType.OPENAI,
+}
+
+# The model parameters a served config may set
+LLM_CONFIG_PARAMETER_NAMES = frozenset({"reasoning_effort", "max_output_tokens"})
+
+# The role of the one message a served config may hold
+SYSTEM_MESSAGE_ROLE = "system"

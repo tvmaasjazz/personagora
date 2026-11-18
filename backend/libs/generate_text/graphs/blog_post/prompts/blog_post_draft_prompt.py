@@ -1,3 +1,4 @@
+from libs.generate_text.constants import FORMAT_RULES_VARIABLE_NAME
 from libs.generate_text.graphs.blog_post.blog_post_body_output_format import (
     BLOG_POST_BODY_FORMAT_RULES,
 )
@@ -7,8 +8,8 @@ from libs.generate_text.states import GenerateTextState
 
 DRAFT_SYSTEM_TEMPLATE = (
     "Write a complete blog post draft from the outline and brief provided. Write the "
-    "full prose, ready for review — not another outline.\n\n{format_rules}"
-    "{persona_prompt_section}{tone_and_audience_prompt_section}"
+    "full prose, ready for review — not another outline.\n\n{{format_rules}}"
+    "{{persona_section}}{{tone_and_audience_section}}"
 )
 
 DRAFT_USER_TEMPLATE = (
@@ -36,7 +37,9 @@ class BlogPostDraftPrompt(BaseGenerateTextPrompt):
             additional_context_prompt_section=additional_context_prompt_section,
         )
         return BuildPromptResult(
-            system_prompt=self._build_system_prompt(state), user_prompt=user_prompt
+            system_prompt_template=DRAFT_SYSTEM_TEMPLATE,
+            system_prompt_variables=self._build_system_prompt_variables(state),
+            user_prompt=user_prompt,
         )
 
     def build_rewrite_prompt(
@@ -49,10 +52,12 @@ class BlogPostDraftPrompt(BaseGenerateTextPrompt):
             feedback_text=feedback_text,
         )
         return BuildPromptResult(
-            system_prompt=self._build_system_prompt(state), user_prompt=user_prompt
+            system_prompt_template=DRAFT_SYSTEM_TEMPLATE,
+            system_prompt_variables=self._build_system_prompt_variables(state),
+            user_prompt=user_prompt,
         )
 
-    def _build_system_prompt(self, state: GenerateTextState) -> str:
+    def _build_system_prompt_variables(self, state: GenerateTextState) -> dict[str, str]:
         persona = state.build_persona()
         persona_prompt_section = self._build_persona_prompt_section(
             persona, ["name", "bio", "background", "writing_style", "sample_writing"]
@@ -60,8 +65,8 @@ class BlogPostDraftPrompt(BaseGenerateTextPrompt):
         tone_and_audience_prompt_section = self._build_tone_and_audience_prompt_section(
             state.tone, state.target_audience
         )
-        return DRAFT_SYSTEM_TEMPLATE.format(
-            format_rules=BLOG_POST_BODY_FORMAT_RULES,
-            persona_prompt_section=persona_prompt_section,
-            tone_and_audience_prompt_section=tone_and_audience_prompt_section,
-        )
+        return {
+            FORMAT_RULES_VARIABLE_NAME: BLOG_POST_BODY_FORMAT_RULES,
+            "persona_section": persona_prompt_section,
+            "tone_and_audience_section": tone_and_audience_prompt_section,
+        }

@@ -1,4 +1,8 @@
-from libs.generate_text.types import GenerateTextRunStatusType
+from libs.generate_text.types import (
+    GenerateTextNodeType,
+    GenerateTextRunStatusType,
+    GenerateTextStepTierType,
+)
 
 # Key a text step's text is stored under in the JSONB output column
 STEP_OUTPUT_TEXT_KEY = "text"
@@ -32,3 +36,25 @@ USER_ROLE_CHANGED_ERROR_CODE = "UserRoleChanged"
 USER_ROLE_CHANGED_ERROR_MESSAGE = (
     "This run stopped because the account can no longer generate text."
 )
+
+# The placeholder a step's system template holds the output format's rules in; a served
+# template for a validated step must keep it
+FORMAT_RULES_VARIABLE_NAME = "format_rules"
+
+# These keys must match the LaunchDarkly configs the seed script creates
+BLOG_POST_LLM_CONFIG_KEY_BY_STEP_AND_TIER: dict[
+    tuple[GenerateTextNodeType, GenerateTextStepTierType], str
+] = {
+    (
+        GenerateTextNodeType.GENERATE_OUTLINE,
+        GenerateTextStepTierType.STANDARD,
+    ): "blog-post-outline-standard",
+    (
+        GenerateTextNodeType.GENERATE_DRAFT,
+        GenerateTextStepTierType.STANDARD,
+    ): "blog-post-draft-standard",
+    (
+        GenerateTextNodeType.HUMANIZE,
+        GenerateTextStepTierType.STANDARD,
+    ): "blog-post-humanize-standard",
+}

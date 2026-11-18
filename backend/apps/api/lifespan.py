@@ -5,11 +5,14 @@ import socket
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import launchdarkly_ai_server
 import structlog
 from fastapi import FastAPI
 from httpx import AsyncClient
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.redis.aio import AsyncRedisSaver
+from launchdarkly_ai_server import init_client
+from ldclient import Config, LDClient
 from openai import AsyncOpenAI
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -71,6 +74,18 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None]:
     else:
         fastapi_app.state.graph_checkpointer = InMemorySaver()
 
+    # Connect to LaunchDarkly; the SDK client blocks while it waits, so it is built off the loop
+    if app_settings.launchdarkly.is_enabled:
+        ld_client = await asyncio.to_thread(
+            LDClient,
+            Config(app_settings.launchdarkly_sdk_key),
+            app_settings.launchdarkly.start_wait_seconds,
+        )
+        if not ld_client.is_initialized():
+            # Steps use their code defaults until the client connects in the background
+            logger.warning("launchdarkly_not_connected")
+        await init_client(client=ld_client)
+
     logger.info(
         "api_started",
         app_name=app_settings.app_name,
@@ -112,6 +127,8 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None]:
         if event_loop_monitor_task is not None:
             event_loop_monitor_task.cancel()
             await asyncio.gather(event_loop_monitor_task, return_exceptions=True)
+        if app_settings.launchdarkly.is_enabled:
+            await launchdarkly_ai_server.shutdown()
         # Close the clients and the engine
         await http_client.aclose()
         await redis_client.aclose()

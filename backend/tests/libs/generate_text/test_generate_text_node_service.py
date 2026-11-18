@@ -7,6 +7,7 @@ from libs.generate_text.graphs.blog_post.blog_post_body_output_format import (
 from libs.generate_text.services.generate_text_node_service import GenerateTextNodeService
 from libs.generate_text.settings import GenerateTextSettings
 from libs.generate_text.types import GenerateTextNodeType
+from libs.llm.inputs import LlmSystemPromptInput
 from libs.llm.types import LlmType
 from tests.factories.generate_text import build_generate_text_state
 from tests.factories.llm import build_llm_completion_result
@@ -23,14 +24,22 @@ async def test_build_generate_node_sends_system_and_user_prompt_from_prompt_obje
     )
     generate_text_prompt_stub = GenerateTextPromptStub()
     generate_node = generate_text_node_service.build_generate_node(
-        GenerateTextNodeType.GENERATE_DRAFT, LlmType.GPT_5_6_SOL, generate_text_prompt_stub
+        GenerateTextNodeType.GENERATE_DRAFT,
+        "test-config-key",
+        LlmType.GPT_5_6_SOL,
+        generate_text_prompt_stub,
     )
     generate_text_state = build_generate_text_state()
 
     await generate_node(generate_text_state)
 
     sent_completion_input = llm_service_stub.complete_inputs[0]
-    assert sent_completion_input.system_prompt == "Stub generate system prompt."
+    assert sent_completion_input.system_prompt == LlmSystemPromptInput(
+        default_template="Stub generate system prompt.",
+        variables={"persona_section": "Stub generate persona."},
+    )
+    assert sent_completion_input.config_key == "test-config-key"
+    assert sent_completion_input.default_llm_type == LlmType.GPT_5_6_SOL
     assert sent_completion_input.user_prompt == "Stub generate user prompt."
 
 
@@ -41,7 +50,10 @@ async def test_build_generate_node_appends_content_to_step_outputs() -> None:
         llm_service=llm_service_stub, generate_text_settings=GenerateTextSettings()
     )
     generate_node = generate_text_node_service.build_generate_node(
-        GenerateTextNodeType.GENERATE_DRAFT, LlmType.GPT_5_6_SOL, GenerateTextPromptStub()
+        GenerateTextNodeType.GENERATE_DRAFT,
+        "test-config-key",
+        LlmType.GPT_5_6_SOL,
+        GenerateTextPromptStub(),
     )
     generate_text_state = build_generate_text_state(
         step_outputs={"GENERATE_OUTLINE": "An outline."}
@@ -65,6 +77,7 @@ async def test_build_rewrite_node_sends_system_and_user_prompt_from_prompt_objec
     generate_text_prompt_stub = GenerateTextPromptStub()
     rewrite_node = generate_text_node_service.build_rewrite_node(
         GenerateTextNodeType.REWRITE_DRAFT,
+        "test-config-key",
         LlmType.GPT_5_6_SOL,
         GenerateTextNodeType.REVIEW_DRAFT,
         generate_text_prompt_stub,
@@ -77,7 +90,10 @@ async def test_build_rewrite_node_sends_system_and_user_prompt_from_prompt_objec
     await rewrite_node(generate_text_state)
 
     sent_completion_input = llm_service_stub.complete_inputs[0]
-    assert sent_completion_input.system_prompt == "Stub rewrite system prompt."
+    assert sent_completion_input.system_prompt == LlmSystemPromptInput(
+        default_template="Stub rewrite system prompt.",
+        variables={"persona_section": "Stub rewrite persona."},
+    )
     assert sent_completion_input.user_prompt == "Stub rewrite user prompt."
 
 
@@ -89,6 +105,7 @@ async def test_build_rewrite_node_appends_content_and_increments_rewrite_count()
     )
     rewrite_node = generate_text_node_service.build_rewrite_node(
         GenerateTextNodeType.REWRITE_DRAFT,
+        "test-config-key",
         LlmType.GPT_5_6_SOL,
         GenerateTextNodeType.REVIEW_DRAFT,
         GenerateTextPromptStub(),
@@ -117,7 +134,10 @@ async def test_build_generate_node_output_format_none_passes_content_through_unt
         llm_service=llm_service_stub, generate_text_settings=GenerateTextSettings()
     )
     generate_node = generate_text_node_service.build_generate_node(
-        GenerateTextNodeType.GENERATE_DRAFT, LlmType.GPT_5_6_SOL, GenerateTextPromptStub()
+        GenerateTextNodeType.GENERATE_DRAFT,
+        "test-config-key",
+        LlmType.GPT_5_6_SOL,
+        GenerateTextPromptStub(),
     )
     generate_text_state = build_generate_text_state()
 
@@ -137,6 +157,7 @@ async def test_build_generate_node_valid_output_first_time_calls_llm_once() -> N
     )
     generate_node = generate_text_node_service.build_generate_node(
         GenerateTextNodeType.GENERATE_DRAFT,
+        "test-config-key",
         LlmType.GPT_5_6_SOL,
         GenerateTextPromptStub(),
         BlogPostBodyOutputFormat(),
@@ -158,6 +179,7 @@ async def test_build_generate_node_fenced_output_stored_unwrapped_with_no_retry(
     )
     generate_node = generate_text_node_service.build_generate_node(
         GenerateTextNodeType.GENERATE_DRAFT,
+        "test-config-key",
         LlmType.GPT_5_6_SOL,
         GenerateTextPromptStub(),
         BlogPostBodyOutputFormat(),
@@ -183,6 +205,7 @@ async def test_build_generate_node_invalid_then_valid_retries_once_with_problems
     )
     generate_node = generate_text_node_service.build_generate_node(
         GenerateTextNodeType.GENERATE_DRAFT,
+        "test-config-key",
         LlmType.GPT_5_6_SOL,
         GenerateTextPromptStub(),
         BlogPostBodyOutputFormat(),
@@ -206,6 +229,7 @@ async def test_build_generate_node_invalid_twice_raises_with_problems_in_message
     )
     generate_node = generate_text_node_service.build_generate_node(
         GenerateTextNodeType.GENERATE_DRAFT,
+        "test-config-key",
         LlmType.GPT_5_6_SOL,
         GenerateTextPromptStub(),
         BlogPostBodyOutputFormat(),
@@ -228,6 +252,7 @@ async def test_build_generate_node_max_output_format_retries_zero_calls_once_the
     )
     generate_node = generate_text_node_service.build_generate_node(
         GenerateTextNodeType.GENERATE_DRAFT,
+        "test-config-key",
         LlmType.GPT_5_6_SOL,
         GenerateTextPromptStub(),
         BlogPostBodyOutputFormat(),

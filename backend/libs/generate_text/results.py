@@ -89,7 +89,8 @@ class FindLlmCallRollupResult(BaseModel):
 
 
 class BuildPromptResult(BaseModel):
-    system_prompt: str
+    system_prompt_template: str
+    system_prompt_variables: dict[str, str]
     user_prompt: str
 
 

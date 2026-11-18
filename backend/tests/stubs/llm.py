@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from pydantic import BaseModel
@@ -7,9 +8,11 @@ from libs.auth.results import AuthUser
 from libs.llm.inputs import LlmCompletionInput, LlmProviderCompletionInput
 from libs.llm.results import (
     LlmCompletionResult,
+    LlmConfigSourceResult,
     LlmProviderCompletionResult,
     LlmStructuredCompletionResult,
 )
+from libs.llm.services.base_llm_config_source_service import BaseLlmConfigSourceService
 from libs.llm.services.base_llm_provider_service import BaseLlmProviderService
 from libs.llm.services.llm_service import LlmService
 from tests.factories.llm import build_llm_completion_result, build_llm_provider_completion_result
@@ -78,3 +81,25 @@ class LlmServiceStub(LlmService):
             raise self.complete_structured_error
         assert self.complete_structured_result is not None
         return self.complete_structured_result
+
+
+class LlmConfigSourceServiceStub(BaseLlmConfigSourceService):
+    def __init__(self) -> None:
+        self.find_config_inputs: list[tuple[str, AuthUser]] = []
+        self.find_config_result: LlmConfigSourceResult | None = None
+        self.track_call_inputs: list[tuple[LlmConfigSourceResult, AuthUser]] = []
+
+    async def find_config(
+        self, config_key: str, auth_user: AuthUser
+    ) -> LlmConfigSourceResult | None:
+        self.find_config_inputs.append((config_key, auth_user))
+        return self.find_config_result
+
+    async def track_call(
+        self,
+        llm_config_source_result: LlmConfigSourceResult,
+        auth_user: AuthUser,
+        call: Callable[[], Awaitable[LlmProviderCompletionResult]],
+    ) -> LlmProviderCompletionResult:
+        self.track_call_inputs.append((llm_config_source_result, auth_user))
+        return await call()

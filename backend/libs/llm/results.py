@@ -1,7 +1,9 @@
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel
 
+from libs.llm.settings import LlmModelSettings
 from libs.llm.types import LlmCallReasonType
 
 
@@ -38,3 +40,32 @@ class LlmProviderCompletionResult(BaseModel):
     cached_input_tokens: int
     reasoning_tokens: int
     provider_request_reference: str | None
+
+
+class LlmConfigMessageResult(BaseModel):
+    role: str
+    content: str
+
+
+class LlmConfigSourceResult(BaseModel):
+    """A config as a source served it, before it's checked against what we can run."""
+
+    config_key: str
+    provider_name: str
+    model_name: str
+    model_parameters: dict[str, Any]
+    messages: list[LlmConfigMessageResult]
+    variation_key: str
+    variation_version: int
+    # What the source needs to report the call back; only that source reads it
+    source_data: dict[str, Any]
+
+
+class ResolveLlmConfigResult(BaseModel):
+    config_key: str
+    model_settings: LlmModelSettings
+    system_prompt: str
+    # None when the code default is used
+    variation_key: str | None
+    variation_version: int | None
+    llm_config_source_result: LlmConfigSourceResult | None

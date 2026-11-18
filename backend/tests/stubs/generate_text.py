@@ -37,11 +37,13 @@ class GenerateTextPromptStub(BaseGenerateTextPrompt):
 
     def __init__(self) -> None:
         self.build_generate_prompt_result = BuildPromptResult(
-            system_prompt="Stub generate system prompt.",
+            system_prompt_template="Stub generate system prompt.",
+            system_prompt_variables={"persona_section": "Stub generate persona."},
             user_prompt="Stub generate user prompt.",
         )
         self.build_rewrite_prompt_result = BuildPromptResult(
-            system_prompt="Stub rewrite system prompt.",
+            system_prompt_template="Stub rewrite system prompt.",
+            system_prompt_variables={"persona_section": "Stub rewrite persona."},
             user_prompt="Stub rewrite user prompt.",
         )
 

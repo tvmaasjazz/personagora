@@ -23,11 +23,6 @@ class LlmCallOrm(BaseOrm):
         Enum(LlmProviderType, name="psg_llm_provider_type")
     )
     model_name: Mapped[str]
-    # No longer written; kept nullable so replicas on the previous release can still insert
-    # it during a deploy. A later migration drops it.
-    llm_type: Mapped[str | None] = mapped_column(
-        Enum("FAST", "STRONG", "THINKING", name="psg_llm_type")
-    )
     purpose: Mapped[str]
     system_prompt: Mapped[str | None]
     user_prompt: Mapped[str]
@@ -50,6 +45,9 @@ class LlmCallOrm(BaseOrm):
     error_message: Mapped[str | None]
     provider_error_message: Mapped[str | None]
     provider_request_reference: Mapped[str | None]
+    config_key: Mapped[str | None]
+    config_variation_key: Mapped[str | None]
+    config_variation_version: Mapped[int | None] = mapped_column(Integer)
     run_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey(GenerateTextRunOrm.id, ondelete="SET NULL")
     )
