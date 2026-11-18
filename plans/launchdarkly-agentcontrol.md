@@ -11,6 +11,9 @@ disagree, the source notes (`sdk-source-notes.md`) win.
 
 ## How generation works today
 
+As the plan was written: Level 0 has since replaced the tiers below with a model per step
+and tier.
+
 ### The graph
 
 `libs/generate_text/graphs/blog_post/graph_builder.py` builds one LangGraph `StateGraph`
@@ -159,8 +162,8 @@ the format-fix loop, the `psg_llm_call` row, and the cost that users are charged
 - LaunchDarkly offers a long list of models, and you can add custom ones. The list is
   only metadata: it suggests parameters and prices the cost charts.
 - Either way, the models that actually work are the ones whose provider is wired into
-  our code and has a key. We also need a price for each one, or users can't be charged
-  for it.
+  our code and has a key. Each must also be an `LlmType` with its price (Level 0), or
+  users can't be charged for it.
 - The LangChain handler packages cover any provider LangChain supports, but each
   provider still needs its own package and key. Using them means adopting LangChain's
   chat models in place of our provider services, which costs more than writing
@@ -174,14 +177,82 @@ the format-fix loop, the `psg_llm_call` row, and the cost that users are charged
 
 Each level builds on the one before it, and each one is useful on its own.
 
-### Level 0 — Per-step models in settings (no LaunchDarkly)
+### Level 0 — A model per step and tier, in settings (no LaunchDarkly)
 
-Map each step to a model in `LlmSettings`, instead of each tier, so draft and humanize
-can differ. Changing a model still needs an env var and a restart, and changing a prompt
-still needs a deploy.
+Each step picks its model per tier, so draft and humanize can differ, and a step can later
+offer users more than one tier. Changing a model still needs an env var and a restart, and
+changing a prompt still needs a deploy. Level 1 uses this as its fallback, and doesn't give
+"on the fly" on its own.
 
-It's an hour's work, and Level 1 needs it anyway as its fallback. It doesn't give "on the
-fly" on its own.
+**`LlmType` names a model, not a tier.** Each member is one model we run, such as
+`LlmType.GPT_5_6_SOL`, and `LlmSettings` holds its definition: the provider, the
+provider's model ID, `max_output_tokens`, `request_timeout_seconds`, `reasoning_effort`,
+and its prices.
+
+- **A model reaches users only by being an `LlmType` with a definition.** That's the
+  allowlist for LaunchDarkly too (Level 1). Adding a model means a member, a definition
+  and its prices.
+- **Prices live in each model's definition,** so a model can't be defined without one,
+  and the separate `model_pricing` table and its check go.
+- **One settings class per model,** as one per tier today, so one value can be
+  overridden alone: `LLM__GPT_5_6_SOL__MAX_OUTPUT_TOKENS`.
+- **Parameters are per model,** so two steps on the same model share them when the code
+  default serves. A LaunchDarkly variation sets its own.
+- **The members to start:** today's two models, plus enough others to compare in
+  LaunchDarkly. THINKING (`o3`) and the unused `gpt-4o-mini` price go. Prices are USD per
+  million tokens, at OpenAI's standard rates for inputs under 272K tokens (checked
+  2026-11-18):
+
+  | Member | Model ID | Input | Cached input | Output |
+  | --- | --- | --- | --- | --- |
+  | `GPT_5_4_NANO` | `gpt-5.4-nano` (today's FAST) | 0.20 | 0.02 | 1.25 |
+  | `GPT_5_6_LUNA` | `gpt-5.6-luna` | 0.20 | 0.02 | 1.20 |
+  | `GPT_5_6_TERRA` | `gpt-5.6-terra` | 2.00 | 0.20 | 12.00 |
+  | `GPT_5_6_SOL` | `gpt-5.6-sol` (today's STRONG) | 4.00 | 0.40 | 20.00 |
+  | `GPT_6_LUNA` | `gpt-6-luna` | 0.10 | 0.01 | 0.50 |
+  | `GPT_6_1_TERRA` | `gpt-6.1-terra` | 1.00 | 0.05 | 5.00 |
+  | `GPT_6_2_SOL` | `gpt-6.2-sol` | 2.00 | 0.10 | 10.00 |
+  | `GPT_6_2_ASTRA` | `gpt-6.2-astra` | 8.00 | 0.40 | 40.00 |
+
+- **Reasoning efforts:** `LlmReasoningEffortType` gains `NONE`, `XHIGH` and `MAX`, which
+  the newer models take and the OpenAI SDK already accepts, and loses `MINIMAL`, which
+  none of them take. Not every model takes every effort (the 6.2 models have no `none`,
+  and `gpt-5.4-nano` has no `max`), so each definition lists the efforts its model
+  accepts. Level 1 falls back when a variation serves one its model doesn't take,
+  instead of sending OpenAI a request it rejects.
+- `LlmTierSettings` becomes `LlmModelSettings`.
+
+**`GenerateTextSettings` maps each step and tier to an `LlmType`:**
+
+```
+generate_text.blog_post.outline.standard  = GPT_5_4_NANO
+generate_text.blog_post.draft.standard    = GPT_5_6_SOL
+generate_text.blog_post.humanize.standard = GPT_5_6_SOL
+```
+
+- **The tier is the field name, `standard`.** The builder always picks it until a second
+  tier exists, which is when a user gets to choose (Level 2 › *Tiers a user picks*). The
+  `GenerateTextStepTierType` enum comes with Level 1, the first code that maps a step and
+  tier to something (its config key).
+- **One small class per step,** since each step's default differs. An env var overrides
+  one step and tier: `GENERATE_TEXT__BLOG_POST__DRAFT__STANDARD=GPT_5_4_NANO`.
+- **The graph builder reads these** in place of hard-coding `LlmType.FAST` and
+  `LlmType.STRONG`. A rewrite uses its step's model.
+- **Once Level 1 is on, these are only the fallback.** LaunchDarkly picks the model for
+  each step and tier in each environment, so a deployed environment rarely needs one of
+  these env vars.
+
+**Also in this PR:**
+
+- **`psg_llm_call.llm_type` stops being written, and becomes nullable.** The row already
+  holds `provider` and `model_name`, and a Postgres enum of models would need a migration
+  for every model added. It isn't dropped yet: Railway migrates before the old replicas
+  stop, and their code still inserts it. Level 1's schema step drops the column and the
+  `psg_llm_type` enum.
+- **The dev LLM endpoint is removed** (`apps/api/domains/dev_llm/`, its tests, and its
+  entries in `app_factory.py` and `test_app_factory.py`). It was for trying models early
+  on, and nothing calls it.
+- A local `.env` that sets `LLM__STRONG__MODEL_NAME` moves to the step settings above.
 
 ### Level 1 — Model and system prompt per step, from LaunchDarkly (recommended start)
 
@@ -193,9 +264,9 @@ as it does today.
 
 **What's in LaunchDarkly:**
 
-- **Three completion-mode configs:** `blog-post-outline`, `blog-post-draft` and
-  `blog-post-humanize`. Each rewrite uses its step's config, as it uses its step's tier
-  today.
+- **Three completion-mode configs, one per step and tier:** `blog-post-outline-standard`,
+  `blog-post-draft-standard` and `blog-post-humanize-standard`. A constant maps each step
+  and tier to its key. Each rewrite uses its step's config, as it uses its step's model.
 - **Each variation is a model plus one system message,** such as:
 
   ```
@@ -220,15 +291,15 @@ as it does today.
 
 1. **A config service in `libs/llm/` that resolves a step's config.**
    - **Input:** a config key, the context, the variables, and the step's code default
-     (its tier and its system template).
-   - **Result:** the provider, the model settings (the `LlmTierSettings` fields), the
-     rendered system prompt, and the variation's key and version.
+     (its `LlmType` and its system template).
+   - **Result:** the model's `LlmModelSettings`, with any parameters the variation sets,
+     the rendered system prompt, and the variation's key and version.
    - **It falls back to the code default, and logs why, when any of these is true:**
      - LaunchDarkly is off, unreachable, or the config is disabled.
      - The provider isn't one we have a service for.
-     - The model has no entry in `model_pricing`. We can't bill a model we can't price,
-       so our price table is the allowlist of models.
-     - A parameter fails validation.
+     - The model isn't an `LlmType` we define. A definition holds the model's price, and
+       we can't bill a model we can't price, so `LlmType` is the allowlist of models.
+     - A parameter fails validation, such as a reasoning effort the model doesn't take.
      - The template leaves a `{{...}}` unfilled.
      - The template drops `{{format_rules}}` for a step that has an output format, so the
        prompt can't drift from the check.
@@ -239,12 +310,12 @@ as it does today.
    - `LlmService` renders whichever template wins with one renderer, so a default and a
      served template can't render differently.
    - The user templates are unchanged.
-3. **Nodes take a config key and a default, in place of `LlmType`,** and pass both, with
-   the variables, to `LlmService` on every call. Nothing is resolved when the graph is
+3. **Nodes take a config key beside their default `LlmType`,** and pass both, with the
+   variables, to `LlmService` on every call. Nothing is resolved when the graph is
    built, so a paused run picks up changes, and a config change never touches
    `graph_version`.
 4. **`LlmService` does the rest.** It asks `LlmConfigService` for the config,
-   LaunchDarkly or default, in place of looking a tier up. It then runs the provider call
+   LaunchDarkly or default, in place of looking the model up. It then runs the provider call
    inside that service's tracking wrapper, which reports duration, tokens and success to
    LaunchDarkly. Pricing, retries and the `psg_llm_call` row are unchanged.
    - A config is resolved per call, which is cheap because it's read from memory. A
@@ -255,7 +326,8 @@ as it does today.
      `LlmService`.
 5. **`psg_llm_call` gets three nullable columns:** `config_key`, `config_variation_key`
    and `config_variation_version`. Every call can then be traced to the variation that
-   wrote it. Calls that used the code default leave them null.
+   wrote it. A call that used the code default has a key and no variation, and rows from
+   before Level 1 have neither.
 6. **Settings and wiring:**
    - **Whether LaunchDarkly is used is an explicit setting,** never inferred from
      whether a key is present (`fastapi-structure.md` › Settings).
@@ -279,15 +351,27 @@ as it does today.
    carry persona text and briefs, and `psg_llm_call` already holds them. LaunchDarkly also
    becomes the app's observability backend, covered under Observability below.
 
-**Which SDK:** start with the current `launchdarkly-ai-server`, through `inspect_config`
-plus a custom handler, with our wrapper supplying the fallback it lacks. Before building on
-it, run a short spike on 3.14: install it, read a config, run one tracked call, and check
-the event lands in Monitoring. If it fails on 3.14, use the legacy `ldai` instead. It
-fits this design just as well (a default, a tracker), but it's in maintenance mode. The
-service in item 1 keeps the choice behind one class either way.
+**Which SDK:** the current `launchdarkly-ai-server` (1.1.0), through `inspect_config` plus
+a custom handler run with `execute_and_track`, with our wrapper supplying the fallback it
+lacks. The spike (2026-11-18, against `development`) checked on 3.14:
 
-**New dependencies** (to approve): `launchdarkly-server-sdk` and `launchdarkly-ai-server`
-(or `launchdarkly-server-sdk-ai`). The OpenTelemetry packages come later, with Phase 2.
+- The base client initialized in under a second and was adopted with
+  `init_client(client=...)`.
+- `inspect_config` returns the model (`name`, freeform `parameters`), the provider
+  (`OpenAI`), the messages, and `meta` with `variationKey`, `version` and `modelKey`. A
+  missing or disabled config returns `enabled: False` and never raises.
+- `execute_and_track` with our own handler reports duration, tokens and success; when the
+  handler raises it reports an error and re-raises. Both reached the config's metrics
+  (`/ai-configs/{key}/metrics`) within minutes.
+- **LaunchDarkly showed zero cost** for those events, though the variation pointed at a
+  catalog model with prices. `psg_llm_call` is the billing record anyway; check the
+  dashboard's cost charts once real calls flow.
+- **`init_client` registers a global OpenTelemetry tracer provider** when the
+  OpenTelemetry SDK is installed (it isn't yet). The Observability work has to make it
+  and the `ldobserve` plugin agree on one provider.
+
+**Dependencies:** `launchdarkly-server-sdk` and `launchdarkly-ai-server`. The OpenTelemetry
+packages come later, with Phase 2.
 
 **One client per process:** build the base `ldclient` ourselves in `lifespan.py`, and
 hand it to the AI SDK with `init_client(client=...)`. Feature flags and AgentControl
@@ -298,23 +382,27 @@ store, which the AI SDK's own client wouldn't let us do.
 
 Each of these is its own PR, in roughly this order:
 
-- **Styles a user picks.** For example, a creator picks "standard" or "advanced" per
+- **Tiers a user picks.** For example, a creator picks "standard" or "advanced" per
   step when starting a run.
-  - Each style is its own config: `blog-post-draft` and `blog-post-draft-advanced`, and
-    the same for each step. Which model and prompt each style uses stays in LaunchDarkly.
-  - Which styles exist is in code: an enum, with an option on each step in
-    `BlogPostOptionsInput`. The frontend lists the enum, options validation rejects an
-    unknown style, and the run saves the choice in its options, so a resume uses the same
-    style.
-  - The node maps the style to its config key. Each style has its own code default too,
-    so the fallback stays meaningful.
+  - Each tier is its own config: `blog-post-draft-standard` and
+    `blog-post-draft-advanced`, and the same for each step. Which model and prompt each
+    tier uses stays in LaunchDarkly.
+  - Which tiers exist is in code: a new `GenerateTextStepTierType` member, a default
+    `LlmType` for it on each step in `GenerateTextSettings`, and an option on each step
+    in `BlogPostOptionsInput` that defaults to `STANDARD`, so runs saved before it still
+    resume. The frontend lists the enum, options validation rejects an unknown tier, and
+    the run saves the choice in its options, so a resume uses the same tier.
+  - Whether a user may pick a tier, such as advanced only for some roles, is a
+    permission check when the run starts, if it's wanted.
+  - The node maps the tier to its config key, and its code default stays meaningful as
+    the fallback.
   - The charge follows the actual model's price, as it does today, so an advanced run
     costs what it costs without any special handling. Showing a price estimate before
     the run starts would need Later › *Credit holds*.
   - **Why separate configs rather than one config targeted on a context attribute:**
-    - The code picks the key, so a targeting mistake can't quietly serve the wrong style.
-    - Each style gets its own monitoring.
-    - Experiments stay within one style.
+    - The code picks the key, so a targeting mistake can't quietly serve the wrong tier.
+    - Each tier gets its own monitoring.
+    - Experiments stay within one tier.
 - **The Anthropic provider.** `AnthropicLlmService` beside `OpenAiLlmService`, with its
   prices in `model_pricing`, so a variation can switch a step to Claude. This also covers
   the Anthropic client that Later › *Models per request* needs.
@@ -329,7 +417,7 @@ Each of these is its own PR, in roughly this order:
   accepted.
 - **Separate rewrite configs.** Use these if a rewrite should use a different model or
   user prompt from its step:
-  - `blog-post-draft-rewrite` and the other two rewrite configs.
+  - `blog-post-draft-standard-rewrite`, and the same for each step and tier.
   - The shared system text moves into a **prompt snippet** that both configs reference.
     Each config is then two messages, a system one and a user one, which makes the user
     templates editable too.
@@ -496,8 +584,13 @@ For example:
 AgentControl and observability (Observability). Every granian worker process is its own
 client, so count processes, not replicas.
 
-**Production, plus local dev while building it.** Both are turned on by settings
-(Observability, Level 1 › Settings and wiring).
+**Staging and local dev until production is up, then production and local dev.** Each
+is turned on by settings (Observability, Level 1 › Settings and wiring).
+
+- **While building,** staging and local dev both run it, at the same time if need be:
+  one granian process in staging is 1 connection, and local dev is about a third.
+- **Once production runs,** `LAUNCHDARKLY__IS_ENABLED` goes to `false` in staging, and
+  production and local dev share the pool as below.
 
 - **Local dev uses its own LaunchDarkly environment,** such as `development`, with its
   own SDK key and targeting. Trying a prompt or flag locally then never changes what
@@ -545,17 +638,28 @@ the API.
 
 ## Level 1 steps
 
-**One PR, or two if the spike is separate.**
+**Five PRs, each merged before the next starts:**
 
-1. **Before any code:**
-   - Create the three configs, in completion mode. Give each a variation that copies
-     today's model and system prompt, and target everyone to it, so switching on changes
-     nothing.
-2. **The spike:** install the SDK on 3.14 and run a throwaway script that reads
-   `blog-post-draft` and runs one tracked call through a custom handler. Then pick the
-   SDK. Add the dependencies with Tyler's approval, then run `uv lock`.
-3. **The schema:** the three `psg_llm_call` columns (`schema-coder`).
-4. **The placement review.** Tyler reviews this list before any coder starts:
+1. **This plan.**
+2. **Level 0.**
+3. **The spike,** done: the dependencies only, with its results under Level 1 › *Which
+   SDK*. It ran on a throwaway config, since the seed script is create-only and a real
+   key made by hand would keep the hand-made prompt.
+4. **Level 1,** in the order below.
+5. **Staging.**
+   - Seed the `staging` environment.
+   - In `.railway/railway.ts`, add `LAUNCHDARKLY_SDK_KEY` as `preserve()` (it's set in
+     the dashboard) and `LAUNCHDARKLY__IS_ENABLED=true`. Tyler reads
+     `railway config plan` before it's applied.
+   - **Prove it:** change a step's model in the staging dashboard, start a run with no
+     deploy, and check its `psg_llm_call` row carries the new model and the variation's
+     key.
+
+**Level 1, in order:**
+
+1. **The schema** (`schema-coder`): the three `psg_llm_call` columns, and dropping
+   `llm_type` and the `psg_llm_type` enum, which Level 0 left nullable.
+2. **The placement review.** Tyler reviews this list before any coder starts:
    - `libs/llm/services/llm_config_service.py`: `LlmConfigService`. It resolves a config
      key into the model settings and rendered system prompt, falling back to the code
      default, and wraps a call to report metrics. It delegates to a provider-style config
@@ -574,15 +678,37 @@ the API.
      place.
    - **Wiring:** `apps/api/lifespan.py` (the client), `apps/api/core/config.py` (the
      settings), and `apps/api/core/dependencies.py` (`build_llm_service`).
-5. **The code** (`fastapi-coder`): the config service, then the `LlmService` and node
+   - **The seed script:** `backend/scripts/launchdarkly/`.
+3. **The code** (`fastapi-coder`): the config service, then the `LlmService` and node
    changes, then the prompt classes.
-6. **The tests** (`be-test-writer`):
+4. **The seed script, `backend/scripts/launchdarkly/seed_llm_configs.py`.** The
+   LaunchDarkly layout is kept as code beside it.
+   - **The configs are declared in that folder:** each one's key, its mode (completion),
+     and a seed variation built from the step's default `LlmType` and system template.
+     The dashboard then starts from exactly what the code would send, and switching on
+     changes nothing.
+   - **Run per environment** (`--environment staging`). It creates each config and its
+     variation if they're missing, then sets that environment's default rule to serve
+     the seed variation to everyone. A new config is already enabled, so there's nothing
+     to turn on.
+   - **A variation names its model by catalog key,** `OpenAI.<model ID>`
+     (`modelConfigKey`). All eight of our models are in LaunchDarkly's catalog with
+     prices, except cached input.
+   - **Create-only.** It never changes a config or variation that exists, so an edit
+     made in the dashboard survives a rerun, as `preserve()` does in `railway.ts`. Once
+     seeded, the content belongs to LaunchDarkly.
+   - **It calls the REST API with `LAUNCHDARKLY_API_TOKEN`, from
+     `backend/.env.launchdarkly`.** Not `backend/.env`: `AppSettings` refuses keys it
+     doesn't declare, and the app never needs this token. The file is gitignored by
+     `.env.*`, and the token never goes to Railway. A token whose role allows
+     AgentControl config actions on the project is enough; Admin also works.
+5. **The tests** (`be-test-writer`):
    - The fallback cases in Level 1's item 1, each one.
    - The renderer.
    - Default templates render byte-for-byte as today's prompts do.
    - One test with a stubbed source that serves a different model and prompt, checking
      both reach the provider call and the new `psg_llm_call` columns.
-7. **A script, `backend/scripts/llm_config_check.py`.** It prints what each step resolves
+6. **A script, `backend/scripts/llm_config_check.py`.** It prints what each step resolves
    to (source, model, variation, and the rendered system prompt for a sample persona), so
    a dashboard change can be checked without starting a run.
 
@@ -603,11 +729,26 @@ the API.
 - **`pytest-testing.md`:** "Logfire export" in the not-tested table becomes "telemetry
   export".
 
-## To decide
+## Decided
 
-- **Completion or agent mode for the configs.** Completion fits single calls and gets
-  judges in the UI everywhere. Agent mode is needed only for Level 3 agent graphs, which
-  this plan advises against. **Recommended: completion.**
-- **Whether a paused run picks up a prompt change before its rewrite.** Recommended: yes,
-  since the variation is recorded on every call. The alternative is pinning each step's
-  resolved config in the checkpoint.
+- **Completion mode for the configs.** Completion fits single calls and gets judges in
+  the UI everywhere. Agent mode is needed only for Level 3 agent graphs, which this plan
+  advises against.
+- **A paused run picks up a model or prompt change** when it resumes, since the
+  variation is recorded on every call. Nothing pins a step's resolved config in the
+  checkpoint.
+
+## After Level 1
+
+- **Reconsider Terraform for the LaunchDarkly layout,** with Phase 2 › *Logging and
+  tracking*, when flags and observability settings join the configs.
+  - LaunchDarkly's provider has `launchdarkly_ai_config`,
+    `launchdarkly_ai_config_variation`, `model_config`, `project` and `environment`
+    resources. No resource for an AgentControl config's targeting turned up (checked
+    2026-11-18), so turning a config on per environment would stay a script or a
+    dashboard step.
+  - Against the seed script: the seed prompts would be copied into `.tf` files rather
+    than read from the Python templates, variations would need `ignore_changes` so an
+    apply doesn't undo dashboard edits, and the state file needs a home.
+  - `ldcli`, LaunchDarkly's CLI, wraps the REST API. It's handy for one-off checks but
+    isn't infrastructure as code.
