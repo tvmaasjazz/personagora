@@ -27,10 +27,12 @@ from libs.llm.types import LlmCallReasonType, LlmReasoningEffortType
 
 # OpenAI's spelling of each reasoning effort, for the Responses API's reasoning.effort.
 OPENAI_REASONING_EFFORT_BY_TYPE: dict[LlmReasoningEffortType, ReasoningEffort] = {
-    LlmReasoningEffortType.MINIMAL: "minimal",
+    LlmReasoningEffortType.NONE: "none",
     LlmReasoningEffortType.LOW: "low",
     LlmReasoningEffortType.MEDIUM: "medium",
     LlmReasoningEffortType.HIGH: "high",
+    LlmReasoningEffortType.XHIGH: "xhigh",
+    LlmReasoningEffortType.MAX: "max",
 }
 
 

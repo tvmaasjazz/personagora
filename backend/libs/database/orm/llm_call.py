@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from libs.database.base import BaseOrm
 from libs.database.orm.generate_text_run import GenerateTextRunOrm
 from libs.database.orm.generate_text_step import GenerateTextStepOrm
-from libs.llm.types import LlmCallReasonType, LlmCallStatusType, LlmProviderType, LlmType
+from libs.llm.types import LlmCallReasonType, LlmCallStatusType, LlmProviderType
 
 
 class LlmCallOrm(BaseOrm):
@@ -19,11 +19,15 @@ class LlmCallOrm(BaseOrm):
         Index("psg_llm_call_step_id_idx", "step_id"),
     )
 
-    llm_type: Mapped[LlmType] = mapped_column(Enum(LlmType, name="psg_llm_type"))
     provider: Mapped[LlmProviderType] = mapped_column(
         Enum(LlmProviderType, name="psg_llm_provider_type")
     )
     model_name: Mapped[str]
+    # No longer written; kept nullable so replicas on the previous release can still insert
+    # it during a deploy. A later migration drops it.
+    llm_type: Mapped[str | None] = mapped_column(
+        Enum("FAST", "STRONG", "THINKING", name="psg_llm_type")
+    )
     purpose: Mapped[str]
     system_prompt: Mapped[str | None]
     user_prompt: Mapped[str]

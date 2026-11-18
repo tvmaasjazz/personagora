@@ -2,11 +2,16 @@ from enum import StrEnum
 
 
 class LlmType(StrEnum):
-    """The tier of model a call needs; LlmSettings maps each tier to a model."""
+    """The model a call runs on; LlmSettings holds each one's definition."""
 
-    FAST = "FAST"
-    STRONG = "STRONG"
-    THINKING = "THINKING"
+    GPT_5_4_NANO = "GPT_5_4_NANO"
+    GPT_5_6_LUNA = "GPT_5_6_LUNA"
+    GPT_5_6_TERRA = "GPT_5_6_TERRA"
+    GPT_5_6_SOL = "GPT_5_6_SOL"
+    GPT_6_LUNA = "GPT_6_LUNA"
+    GPT_6_1_TERRA = "GPT_6_1_TERRA"
+    GPT_6_2_SOL = "GPT_6_2_SOL"
+    GPT_6_2_ASTRA = "GPT_6_2_ASTRA"
 
 
 class LlmProviderType(StrEnum):
@@ -17,10 +22,12 @@ class LlmProviderType(StrEnum):
 class LlmReasoningEffortType(StrEnum):
     """How hard a reasoning model thinks; each provider maps it to its own values."""
 
-    MINIMAL = "MINIMAL"
+    NONE = "NONE"
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
+    XHIGH = "XHIGH"
+    MAX = "MAX"
 
 
 class LlmCallStatusType(StrEnum):

@@ -2,12 +2,10 @@ from fastapi import FastAPI
 
 from apps.api.core.config import AppSettings
 from apps.api.core.exception_handlers import register_exception_handlers
-from apps.api.core.types import EnvironmentType
 from apps.api.domains.admin.router import admin_router
 from apps.api.domains.auth.router import auth_router
 from apps.api.domains.blog_posts.router import blog_post_router
 from apps.api.domains.content_items.router import content_item_router
-from apps.api.domains.dev_llm.router import dev_llm_router
 from apps.api.domains.generate_text.router import generate_text_router
 from apps.api.domains.google_auth.router import google_auth_router
 from apps.api.domains.health.router import health_router
@@ -34,7 +32,5 @@ def create_app() -> FastAPI:
     fastapi_app.include_router(content_item_router)
     fastapi_app.include_router(generate_text_router)
     fastapi_app.include_router(admin_router)
-    if app_settings.environment is EnvironmentType.DEVELOPMENT:
-        fastapi_app.include_router(dev_llm_router)
 
     return fastapi_app

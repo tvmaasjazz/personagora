@@ -44,10 +44,12 @@ def test_build_reasoning_no_effort_returns_omit() -> None:
 @pytest.mark.parametrize(
     ("reasoning_effort", "expected_effort"),
     [
-        pytest.param(LlmReasoningEffortType.MINIMAL, "minimal", id="minimal"),
+        pytest.param(LlmReasoningEffortType.NONE, "none", id="none"),
         pytest.param(LlmReasoningEffortType.LOW, "low", id="low"),
         pytest.param(LlmReasoningEffortType.MEDIUM, "medium", id="medium"),
         pytest.param(LlmReasoningEffortType.HIGH, "high", id="high"),
+        pytest.param(LlmReasoningEffortType.XHIGH, "xhigh", id="xhigh"),
+        pytest.param(LlmReasoningEffortType.MAX, "max", id="max"),
     ],
 )
 def test_build_reasoning_effort_returns_openai_effort(
@@ -69,7 +71,7 @@ def test_build_reasoning_every_effort_has_an_openai_value(
     reasoning = OpenAiLlmUtils.build_reasoning(provider_input)
 
     assert isinstance(reasoning, dict)
-    assert reasoning["effort"] in {"minimal", "low", "medium", "high"}
+    assert reasoning["effort"] in {"none", "low", "medium", "high", "xhigh", "max"}
 
 
 @pytest.mark.parametrize(

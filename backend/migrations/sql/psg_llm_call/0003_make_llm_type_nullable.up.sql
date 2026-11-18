@@ -1,0 +1,1 @@
+ALTER TABLE psg_llm_call ALTER COLUMN llm_type DROP NOT NULL;

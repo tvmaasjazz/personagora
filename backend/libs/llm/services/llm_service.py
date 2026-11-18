@@ -12,7 +12,7 @@ from libs.llm.results import (
 )
 from libs.llm.services.base_llm_provider_service import BaseLlmProviderService
 from libs.llm.services.llm_call_service import LlmCallService
-from libs.llm.settings import LlmSettings, LlmTierSettings
+from libs.llm.settings import LlmModelSettings, LlmSettings
 from libs.llm.types import LlmProviderType, LlmType
 from libs.llm.utils import LlmUtils
 
@@ -20,7 +20,7 @@ logger = structlog.get_logger(__name__)
 
 
 class LlmService:
-    """Runs completions on the provider each tier is configured for and logs every call."""
+    """Runs completions on the provider each model is configured for and logs every call."""
 
     def __init__(
         self,
@@ -30,11 +30,15 @@ class LlmService:
     ) -> None:
         self._llm_provider_services = llm_provider_services
         self._llm_call_service = llm_call_service
-        self._llm_settings = llm_settings
-        self._tier_settings_by_llm_type: dict[LlmType, LlmTierSettings] = {
-            LlmType.FAST: llm_settings.fast,
-            LlmType.STRONG: llm_settings.strong,
-            LlmType.THINKING: llm_settings.thinking,
+        self._model_settings_by_llm_type: dict[LlmType, LlmModelSettings] = {
+            LlmType.GPT_5_4_NANO: llm_settings.gpt_5_4_nano,
+            LlmType.GPT_5_6_LUNA: llm_settings.gpt_5_6_luna,
+            LlmType.GPT_5_6_TERRA: llm_settings.gpt_5_6_terra,
+            LlmType.GPT_5_6_SOL: llm_settings.gpt_5_6_sol,
+            LlmType.GPT_6_LUNA: llm_settings.gpt_6_luna,
+            LlmType.GPT_6_1_TERRA: llm_settings.gpt_6_1_terra,
+            LlmType.GPT_6_2_SOL: llm_settings.gpt_6_2_sol,
+            LlmType.GPT_6_2_ASTRA: llm_settings.gpt_6_2_astra,
         }
 
     async def complete(
@@ -79,22 +83,22 @@ class LlmService:
         auth_user: AuthUser,
         output_type: type[BaseModel] | None,
     ) -> CompleteLlmCallResult:
-        tier_settings = self._resolve_tier(llm_completion_input.llm_type)
-        llm_provider_service = self._resolve_provider_service(tier_settings.provider)
+        model_settings = self._resolve_model(llm_completion_input.llm_type)
+        llm_provider_service = self._resolve_provider_service(model_settings.provider)
 
         create_pending_llm_call_result = await self._llm_call_service.create_pending_llm_call(
-            llm_completion_input, tier_settings, auth_user
+            llm_completion_input, model_settings, auth_user
         )
         llm_call_id = create_pending_llm_call_result.llm_call_id
         llm_call_identity = create_pending_llm_call_result.llm_call_identity
 
         provider_input = LlmProviderCompletionInput(
-            model_name=tier_settings.model_name,
+            model_name=model_settings.model_name,
             system_prompt=llm_completion_input.system_prompt,
             user_prompt=llm_completion_input.user_prompt,
-            max_output_tokens=tier_settings.max_output_tokens,
-            request_timeout_seconds=tier_settings.request_timeout_seconds,
-            reasoning_effort=tier_settings.reasoning_effort,
+            max_output_tokens=model_settings.max_output_tokens,
+            request_timeout_seconds=model_settings.request_timeout_seconds,
+            reasoning_effort=model_settings.reasoning_effort,
         )
 
         start_time = DateTimeUtils.now_monotonic()
@@ -114,8 +118,7 @@ class LlmService:
         duration_ms = DateTimeUtils.elapsed_ms(start_time)
 
         cost_usd = LlmUtils.compute_cost(
-            self._llm_settings,
-            tier_settings.model_name,
+            model_settings,
             provider_completion_result.input_tokens,
             provider_completion_result.output_tokens,
             provider_completion_result.cached_input_tokens,
@@ -129,7 +132,7 @@ class LlmService:
         logger.info(
             "llm_call_completed",
             llm_type=llm_completion_input.llm_type,
-            model_name=tier_settings.model_name,
+            model_name=model_settings.model_name,
             purpose=llm_completion_input.purpose,
             input_tokens=provider_completion_result.input_tokens,
             output_tokens=provider_completion_result.output_tokens,
@@ -147,11 +150,11 @@ class LlmService:
             provider_completion_result=provider_completion_result,
         )
 
-    def _resolve_tier(self, llm_type: LlmType) -> LlmTierSettings:
-        tier_settings = self._tier_settings_by_llm_type.get(llm_type)
-        if tier_settings is None:
-            raise NotImplementedError(f"No tier configured for {llm_type}")
-        return tier_settings
+    def _resolve_model(self, llm_type: LlmType) -> LlmModelSettings:
+        model_settings = self._model_settings_by_llm_type.get(llm_type)
+        if model_settings is None:
+            raise NotImplementedError(f"No model configured for {llm_type}")
+        return model_settings
 
     def _resolve_provider_service(self, provider: LlmProviderType) -> BaseLlmProviderService:
         llm_provider_service = self._llm_provider_services.get(provider)

@@ -18,12 +18,7 @@ from libs.llm.inputs import LlmProviderCompletionInput
 from libs.llm.results import LlmCompletionResult, LlmStructuredCompletionResult
 from libs.llm.services.llm_call_service import LlmCallService
 from libs.llm.services.llm_service import LlmService
-from libs.llm.settings import (
-    FastLlmTierSettings,
-    LlmModelPricingSettings,
-    LlmSettings,
-    StrongLlmTierSettings,
-)
+from libs.llm.settings import Gpt54NanoLlmModelSettings, LlmSettings
 from libs.llm.types import (
     LlmCallReasonType,
     LlmCallStatusType,
@@ -34,7 +29,6 @@ from libs.llm.types import (
 from tests.factories.auth import build_auth_user
 from tests.factories.llm import (
     build_llm_completion_input,
-    build_llm_model_pricing_by_model_name,
     build_llm_provider_completion_result,
 )
 from tests.factories.users import insert_user_row
@@ -47,27 +41,24 @@ class _SampleOutput(BaseModel):
 
 def _build_llm_settings(
     *,
-    model_name: str = "test-model",
     input_usd_per_million_tokens: Decimal = Decimal("2.00"),
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.50"),
     output_usd_per_million_tokens: Decimal = Decimal("8.00"),
     provider: LlmProviderType = LlmProviderType.OPENAI,
+    max_output_tokens: int = 2048,
+    request_timeout_seconds: int = 30,
+    reasoning_effort: LlmReasoningEffortType | None = None,
 ) -> LlmSettings:
     return LlmSettings(
-        fast=FastLlmTierSettings(
+        gpt_5_4_nano=Gpt54NanoLlmModelSettings(
             provider=provider,
-            model_name=model_name,
-            max_output_tokens=2048,
-            request_timeout_seconds=30,
-        ),
-        model_pricing={
-            **LlmSettings().model_pricing,
-            model_name: LlmModelPricingSettings(
-                input_usd_per_million_tokens=input_usd_per_million_tokens,
-                cached_input_usd_per_million_tokens=cached_input_usd_per_million_tokens,
-                output_usd_per_million_tokens=output_usd_per_million_tokens,
-            ),
-        },
+            max_output_tokens=max_output_tokens,
+            request_timeout_seconds=request_timeout_seconds,
+            reasoning_effort=reasoning_effort,
+            input_usd_per_million_tokens=input_usd_per_million_tokens,
+            cached_input_usd_per_million_tokens=cached_input_usd_per_million_tokens,
+            output_usd_per_million_tokens=output_usd_per_million_tokens,
+        )
     )
 
 
@@ -99,7 +90,7 @@ async def test_complete_succeeded_persists_row_and_returns_result(
         llm_settings=llm_settings,
     )
     llm_completion_input = build_llm_completion_input(
-        llm_type=LlmType.FAST, purpose="succeeded-purpose"
+        llm_type=LlmType.GPT_5_4_NANO, purpose="succeeded-purpose"
     )
 
     complete_result = await llm_service.complete(llm_completion_input, auth_user)
@@ -116,9 +107,8 @@ async def test_complete_succeeded_persists_row_and_returns_result(
     llm_call_record = await db_session.scalar(llm_call_query)
     assert llm_call_record is not None
     assert llm_call_record.status == LlmCallStatusType.SUCCEEDED
-    assert llm_call_record.llm_type == LlmType.FAST
     assert llm_call_record.provider == LlmProviderType.OPENAI
-    assert llm_call_record.model_name == "test-model"
+    assert llm_call_record.model_name == "gpt-5.4-nano"
     assert llm_call_record.purpose == "succeeded-purpose"
     assert llm_call_record.system_prompt == llm_completion_input.system_prompt
     assert llm_call_record.user_prompt == llm_completion_input.user_prompt
@@ -134,7 +124,7 @@ async def test_complete_succeeded_persists_row_and_returns_result(
     assert llm_call_record.updated_by_id == auth_user.id
 
 
-async def test_complete_computes_cost_from_pricing_map_billing_cached_tokens_at_cached_rate(
+async def test_complete_computes_cost_from_model_prices_billing_cached_tokens_at_cached_rate(
     db_session: AsyncSession, db_session_factory: async_sessionmaker[AsyncSession]
 ) -> None:
     auth_user = await _insert_auth_user(db_session)
@@ -337,70 +327,61 @@ async def test_complete_logs_llm_call_completed_with_token_counts(
     assert llm_call_completed_events[0]["reasoning_tokens"] == 5
 
 
-async def test_complete_tier_provider_not_registered_raises_not_implemented_error(
+async def test_complete_model_provider_not_registered_raises_not_implemented_error(
     db_session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
-    llm_settings = LlmSettings(
-        fast=FastLlmTierSettings(
-            provider=LlmProviderType.ANTHROPIC,
-            model_name="claude-stub",
-            max_output_tokens=2048,
-            request_timeout_seconds=30,
-        ),
-        model_pricing=build_llm_model_pricing_by_model_name(extra_model_names=["claude-stub"]),
-    )
     llm_service = LlmService(
         llm_provider_services={},
         llm_call_service=llm_call_service,
-        llm_settings=llm_settings,
+        llm_settings=_build_llm_settings(provider=LlmProviderType.ANTHROPIC),
     )
-    llm_completion_input = build_llm_completion_input(llm_type=LlmType.FAST)
+    llm_completion_input = build_llm_completion_input(llm_type=LlmType.GPT_5_4_NANO)
 
     with pytest.raises(NotImplementedError):
         await llm_service.complete(llm_completion_input, build_auth_user())
 
 
-async def test_complete_passes_tier_reasoning_effort_to_provider(
-    db_session: AsyncSession, db_session_factory: async_sessionmaker[AsyncSession]
+@pytest.mark.parametrize("llm_type", list(LlmType))
+async def test_complete_passes_the_llm_types_model_settings_to_provider(
+    db_session: AsyncSession,
+    db_session_factory: async_sessionmaker[AsyncSession],
+    llm_type: LlmType,
 ) -> None:
     auth_user = await _insert_auth_user(db_session)
     llm_provider_service_stub = LlmProviderServiceStub()
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
-    llm_settings = LlmSettings(
-        fast=FastLlmTierSettings(
-            provider=LlmProviderType.OPENAI,
-            model_name="test-model",
-            max_output_tokens=2048,
-            request_timeout_seconds=30,
-            reasoning_effort=LlmReasoningEffortType.HIGH,
-        ),
-        model_pricing=build_llm_model_pricing_by_model_name(extra_model_names=["test-model"]),
+    llm_settings_field_name = llm_type.lower()
+    default_model_settings = getattr(LlmSettings(), llm_settings_field_name)
+    overridden_model_settings = type(default_model_settings)(
+        max_output_tokens=777,
+        request_timeout_seconds=11,
+        reasoning_effort=LlmReasoningEffortType.HIGH,
     )
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=llm_settings,
+        llm_settings=LlmSettings(**{llm_settings_field_name: overridden_model_settings}),
     )
     llm_completion_input = build_llm_completion_input(
-        llm_type=LlmType.FAST, system_prompt="Be brief.", user_prompt="Say hi."
+        llm_type=llm_type, system_prompt="Be brief.", user_prompt="Say hi."
     )
 
     await llm_service.complete(llm_completion_input, auth_user)
 
     assert llm_provider_service_stub.complete_inputs == [
         LlmProviderCompletionInput(
-            model_name="test-model",
+            model_name=default_model_settings.model_name,
             system_prompt="Be brief.",
             user_prompt="Say hi.",
-            max_output_tokens=2048,
-            request_timeout_seconds=30,
+            max_output_tokens=777,
+            request_timeout_seconds=11,
             reasoning_effort=LlmReasoningEffortType.HIGH,
         )
     ]
 
 
-async def test_complete_structured_tier_without_reasoning_effort_passes_none(
+async def test_complete_structured_model_without_reasoning_effort_passes_none(
     db_session: AsyncSession, db_session_factory: async_sessionmaker[AsyncSession]
 ) -> None:
     auth_user = await _insert_auth_user(db_session)
@@ -409,29 +390,18 @@ async def test_complete_structured_tier_without_reasoning_effort_passes_none(
         parsed_output=_SampleOutput(answer="42")
     )
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
-    llm_settings = LlmSettings(
-        strong=StrongLlmTierSettings(
-            provider=LlmProviderType.OPENAI,
-            model_name="test-model",
-            max_output_tokens=1024,
-            request_timeout_seconds=90,
-        ),
-        model_pricing=build_llm_model_pricing_by_model_name(extra_model_names=["test-model"]),
-    )
     llm_service = LlmService(
         llm_provider_services={LlmProviderType.OPENAI: llm_provider_service_stub},
         llm_call_service=llm_call_service,
-        llm_settings=llm_settings,
+        llm_settings=_build_llm_settings(max_output_tokens=1024, request_timeout_seconds=90),
     )
-    llm_completion_input = build_llm_completion_input(
-        llm_type=LlmType.STRONG, system_prompt=None, user_prompt="Say hi."
-    )
+    llm_completion_input = build_llm_completion_input(system_prompt=None, user_prompt="Say hi.")
 
     await llm_service.complete_structured(llm_completion_input, _SampleOutput, auth_user)
 
     assert llm_provider_service_stub.complete_structured_inputs == [
         LlmProviderCompletionInput(
-            model_name="test-model",
+            model_name="gpt-5.4-nano",
             system_prompt=None,
             user_prompt="Say hi.",
             max_output_tokens=1024,

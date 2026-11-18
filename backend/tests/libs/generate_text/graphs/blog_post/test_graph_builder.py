@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+import pytest
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from libs.auth.results import AuthUser
 from libs.generate_text.graphs.blog_post.graph_builder import BlogPostGraphBuilder
+from libs.generate_text.graphs.blog_post.inputs import BlogPostOptionsInput
 from libs.generate_text.inputs import StepOptionInput
 from libs.generate_text.services.generate_text_instrumentation_service import (
     GenerateTextInstrumentationService,
@@ -14,7 +16,13 @@ from libs.generate_text.services.generate_text_instrumentation_service import (
 from libs.generate_text.services.generate_text_node_service import GenerateTextNodeService
 from libs.generate_text.services.generate_text_run_service import GenerateTextRunService
 from libs.generate_text.services.generate_text_step_service import GenerateTextStepService
-from libs.generate_text.settings import GenerateTextSettings
+from libs.generate_text.settings import (
+    BlogPostDraftStepSettings,
+    BlogPostHumanizeStepSettings,
+    BlogPostOutlineStepSettings,
+    BlogPostStepSettings,
+    GenerateTextSettings,
+)
 from libs.generate_text.states import GenerateTextState
 from libs.generate_text.types import GenerateTextNodeType
 from libs.llm.types import LlmType
@@ -30,6 +38,12 @@ from tests.factories.personas import insert_persona_row
 from tests.factories.users import insert_user_row
 from tests.stubs.llm import LlmServiceStub
 
+_DISTINCT_STEP_SETTINGS = BlogPostStepSettings(
+    outline=BlogPostOutlineStepSettings(standard=LlmType.GPT_6_LUNA),
+    draft=BlogPostDraftStepSettings(standard=LlmType.GPT_6_1_TERRA),
+    humanize=BlogPostHumanizeStepSettings(standard=LlmType.GPT_6_2_SOL),
+)
+
 
 async def _insert_auth_user(db_session: AsyncSession) -> AuthUser:
     user_record = await insert_user_row(db_session)
@@ -42,6 +56,7 @@ def _build_graph_builder(
     llm_service_stub: LlmServiceStub,
     *,
     max_rewrite_passes: int = 3,
+    blog_post_step_settings: BlogPostStepSettings | None = None,
 ) -> tuple[GenerateTextRunService, BlogPostGraphBuilder]:
     run_service = GenerateTextRunService(db_session_factory=db_session_factory)
     step_service = GenerateTextStepService(
@@ -50,7 +65,10 @@ def _build_graph_builder(
     instrumentation_service = GenerateTextInstrumentationService(
         run_service=run_service, step_service=step_service
     )
-    generate_text_settings = GenerateTextSettings(max_rewrite_passes=max_rewrite_passes)
+    generate_text_settings = GenerateTextSettings(
+        max_rewrite_passes=max_rewrite_passes,
+        blog_post=blog_post_step_settings or BlogPostStepSettings(),
+    )
     node_service = GenerateTextNodeService(
         llm_service=llm_service_stub, generate_text_settings=generate_text_settings
     )
@@ -90,7 +108,9 @@ async def test_build_graph_all_steps_auto_approved_runs_to_end(
         content="# Generated\n\nGenerated text."
     )
     run_service, blog_post_graph_builder = _build_graph_builder(
-        db_session_factory, llm_service_stub
+        db_session_factory,
+        llm_service_stub,
+        blog_post_step_settings=_DISTINCT_STEP_SETTINGS,
     )
     generate_text_state = await _seed_state(db_session, run_service, auth_user)
     options = build_blog_post_options_input(
@@ -115,7 +135,7 @@ async def test_build_graph_all_steps_auto_approved_runs_to_end(
     completion_llm_types = [
         completion_input.llm_type for completion_input in llm_service_stub.complete_inputs
     ]
-    assert completion_llm_types == [LlmType.FAST, LlmType.STRONG, LlmType.STRONG]
+    assert completion_llm_types == [LlmType.GPT_6_LUNA, LlmType.GPT_6_1_TERRA, LlmType.GPT_6_2_SOL]
     outline_completion_input = llm_service_stub.complete_inputs[0]
     assert "Write about sourdough starters." in outline_completion_input.user_prompt
     assert outline_completion_input.run_id == generate_text_state.generate_text_run_id
@@ -175,6 +195,62 @@ async def test_build_graph_rejection_routes_to_rewrite_and_pauses_again(
         == "# Draft\n\nA revised draft."
     )
     assert graph_state_snapshot.values["rewrite_counts"]["REVIEW_DRAFT"] == 1
+
+
+@pytest.mark.parametrize(
+    ("options", "expected_llm_types"),
+    [
+        pytest.param(
+            build_blog_post_options_input(
+                outline=StepOptionInput(is_enabled=True, is_auto_approved=False),
+                draft=StepOptionInput(is_auto_approved=False),
+            ),
+            [LlmType.GPT_6_LUNA, LlmType.GPT_6_LUNA],
+            id="outline_and_its_rewrite",
+        ),
+        pytest.param(
+            build_blog_post_options_input(draft=StepOptionInput(is_auto_approved=False)),
+            [LlmType.GPT_6_1_TERRA, LlmType.GPT_6_1_TERRA],
+            id="draft_and_its_rewrite",
+        ),
+        pytest.param(
+            build_blog_post_options_input(
+                draft=StepOptionInput(is_auto_approved=True),
+                humanize=StepOptionInput(is_enabled=True, is_auto_approved=False),
+            ),
+            [LlmType.GPT_6_1_TERRA, LlmType.GPT_6_2_SOL, LlmType.GPT_6_2_SOL],
+            id="draft_then_humanize_and_its_rewrite",
+        ),
+    ],
+)
+async def test_build_graph_rewrite_runs_on_its_steps_model(
+    db_session: AsyncSession,
+    db_session_factory: async_sessionmaker[AsyncSession],
+    options: BlogPostOptionsInput,
+    expected_llm_types: list[LlmType],
+) -> None:
+    auth_user = await _insert_auth_user(db_session)
+    llm_service_stub = LlmServiceStub()
+    llm_service_stub.complete_result = build_llm_completion_result(content="# Draft\n\nA draft.")
+    run_service, blog_post_graph_builder = _build_graph_builder(
+        db_session_factory,
+        llm_service_stub,
+        blog_post_step_settings=_DISTINCT_STEP_SETTINGS,
+    )
+    generate_text_state = await _seed_state(db_session, run_service, auth_user)
+    blog_post_graph = blog_post_graph_builder.build_graph(
+        options.model_dump(mode="json"), InMemorySaver()
+    )
+    graph_run_config: RunnableConfig = {"configurable": {"thread_id": str(uuid4())}}
+    await blog_post_graph.ainvoke(generate_text_state, graph_run_config)
+    reject_command = Command(resume={"is_approved": False, "feedback_text": "Redo it."})
+
+    await blog_post_graph.ainvoke(reject_command, graph_run_config)
+
+    completion_llm_types = [
+        completion_input.llm_type for completion_input in llm_service_stub.complete_inputs
+    ]
+    assert completion_llm_types == expected_llm_types
 
 
 async def test_build_graph_max_rewrite_passes_ends_run_instead_of_looping(

@@ -84,26 +84,28 @@ Nested settings use a double underscore, such as `AUTH__SESSION_TTL_SECONDS`.
 
 #### Choosing the models
 
-Each step asks for a tier of model rather than a specific one, and each tier has a
-default:
+Each blog post step runs on a model chosen per tier. There's one tier for now,
+`STANDARD`:
 
-| Tier       | Used for                                          | Default       | Variable                    |
-| ---------- | ------------------------------------------------- | ------------- | --------------------------- |
-| `FAST`     | The outline and its rewrites                      | `gpt-4o-mini` | `LLM__FAST__MODEL_NAME`     |
-| `STRONG`   | The draft, the humanize pass and their rewrites   | `gpt-5.6-sol` | `LLM__STRONG__MODEL_NAME`   |
-| `THINKING` | Not used yet                                      | `o3`          | `LLM__THINKING__MODEL_NAME` |
+| Step                         | Default        | Variable                                       |
+| ---------------------------- | -------------- | ---------------------------------------------- |
+| The outline and its rewrites | `GPT_5_4_NANO` | `GENERATE_TEXT__BLOG_POST__OUTLINE__STANDARD`  |
+| The draft and its rewrites   | `GPT_5_6_SOL`  | `GENERATE_TEXT__BLOG_POST__DRAFT__STANDARD`    |
+| Humanize and its rewrites    | `GPT_5_6_SOL`  | `GENERATE_TEXT__BLOG_POST__HUMANIZE__STANDARD` |
 
-To keep costs down while you try it out, run every step on the cheaper model by
-adding this to `.env` (it's in `.env.example`, commented out):
+A step's value is any `LlmType` (`backend/libs/llm/types.py`). To keep costs down while
+you try it out, run the draft and humanize on a cheap model by adding this to `.env`
+(it's in `.env.example`, commented out):
 
 ```bash
-LLM__STRONG__MODEL_NAME=gpt-4o-mini
+GENERATE_TEXT__BLOG_POST__DRAFT__STANDARD=GPT_6_LUNA
+GENERATE_TEXT__BLOG_POST__HUMANIZE__STANDARD=GPT_6_LUNA
 ```
 
-Each tier's output limit and timeout can be set the same way, for example
-`LLM__STRONG__MAX_OUTPUT_TOKENS` and `LLM__STRONG__REQUEST_TIMEOUT_SECONDS`. Run costs
-are worked out from a price table for the default models. A model that isn't in it
-still works, but its runs show the cost as unknown.
+Each model's definition, including its output limit, timeout and prices, is in
+`backend/libs/llm/settings.py`, and one value can be set the same way, for example
+`LLM__GPT_5_6_SOL__MAX_OUTPUT_TOKENS`. A run's cost comes from those prices, so only a
+model defined there can run.
 
 ### 2. Start Postgres and Redis
 

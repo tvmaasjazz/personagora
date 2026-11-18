@@ -13,7 +13,8 @@ export interface paths {
         };
         /**
          * Get Health
-         * @description Reports that the API is up, with its app name and environment.
+         * @description Reports that the API is up, with its app name, environment and the caller's IP as
+         *     the API resolved it.
          */
         get: operations["get_health_health_get"];
         put?: never;
@@ -570,26 +571,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/dev/llm/complete": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Complete Llm
-         * @description Runs one LLM completion for the signed-in user, for trying prompts in development.
-         */
-        post: operations["complete_llm_dev_llm_complete_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -869,14 +850,6 @@ export interface components {
             /** Code */
             code: string;
         };
-        /** CompleteLlmDto */
-        CompleteLlmDto: {
-            llm_type: components["schemas"]["LlmType"];
-            /** System Prompt */
-            system_prompt: string | null;
-            /** User Prompt */
-            user_prompt: string;
-        };
         /** CreateBlogPostDto */
         CreateBlogPostDto: {
             /**
@@ -1031,26 +1004,6 @@ export interface components {
          * @enum {string}
          */
         InviteStatusType: "UNUSED" | "USED" | "EXPIRED" | "REVOKED";
-        /** LlmCompletionResponseDto */
-        LlmCompletionResponseDto: {
-            /**
-             * Llm Call Identity
-             * Format: uuid
-             */
-            llm_call_identity: string;
-            /** Content */
-            content: string;
-            /** Input Tokens */
-            input_tokens: number;
-            /** Output Tokens */
-            output_tokens: number;
-        };
-        /**
-         * LlmType
-         * @description The tier of model a call needs; LlmSettings maps each tier to a model.
-         * @enum {string}
-         */
-        LlmType: "FAST" | "STRONG" | "THINKING";
         /** PaginationResponseDto */
         PaginationResponseDto: {
             /** Page */
@@ -2377,39 +2330,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmptyResponseDto"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    complete_llm_dev_llm_complete_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CompleteLlmDto"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LlmCompletionResponseDto"];
                 };
             };
             /** @description Validation Error */

@@ -4,6 +4,14 @@ import pytest
 from pydantic import ValidationError
 
 from apps.api.core.config import AppSettings
+from libs.generate_text.settings import (
+    BlogPostDraftStepSettings,
+    BlogPostHumanizeStepSettings,
+    BlogPostOutlineStepSettings,
+    BlogPostStepSettings,
+)
+from libs.llm.settings import Gpt56SolLlmModelSettings
+from libs.llm.types import LlmType
 
 
 def test_app_settings_toml_overrides_default(
@@ -67,3 +75,32 @@ def test_app_settings_blank_openai_api_key_raises_validation_error(
 
     with pytest.raises(ValidationError):
         AppSettings()
+
+
+def test_app_settings_generate_text_blog_post_draft_env_var_leaves_other_steps_at_defaults(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("GENERATE_TEXT__BLOG_POST__DRAFT__STANDARD", "GPT_6_LUNA")
+    monkeypatch.delenv("GENERATE_TEXT__BLOG_POST__OUTLINE__STANDARD", raising=False)
+    monkeypatch.delenv("GENERATE_TEXT__BLOG_POST__HUMANIZE__STANDARD", raising=False)
+
+    loaded_app_settings = AppSettings()
+
+    assert loaded_app_settings.generate_text.blog_post == BlogPostStepSettings(
+        outline=BlogPostOutlineStepSettings(standard=LlmType.GPT_5_4_NANO),
+        draft=BlogPostDraftStepSettings(standard=LlmType.GPT_6_LUNA),
+        humanize=BlogPostHumanizeStepSettings(standard=LlmType.GPT_5_6_SOL),
+    )
+
+
+def test_app_settings_llm_model_env_var_overrides_one_field_and_keeps_the_rest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LLM__GPT_5_6_SOL__MAX_OUTPUT_TOKENS", "1234")
+    monkeypatch.delenv("LLM__GPT_5_6_SOL__MODEL_NAME", raising=False)
+
+    loaded_app_settings = AppSettings()
+
+    assert loaded_app_settings.llm.gpt_5_6_sol == Gpt56SolLlmModelSettings(max_output_tokens=1234)
