@@ -93,7 +93,6 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
                         GenerateTextNodeType.REVIEW_OUTLINE, review_outline_node
                     ),
                 )
-                # A rewrite is its own node so it can use its own model
                 rewrite_outline_node = self._node_service.build_rewrite_node(
                     GenerateTextNodeType.REWRITE_OUTLINE,
                     outline_llm_type,

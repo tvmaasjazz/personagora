@@ -30,7 +30,6 @@ class LlmService:
     ) -> None:
         self._llm_provider_services = llm_provider_services
         self._llm_call_service = llm_call_service
-        self._llm_settings = llm_settings
         self._model_settings_by_llm_type: dict[LlmType, LlmModelSettings] = {
             LlmType.GPT_5_4_NANO: llm_settings.gpt_5_4_nano,
             LlmType.GPT_5_6_LUNA: llm_settings.gpt_5_6_luna,

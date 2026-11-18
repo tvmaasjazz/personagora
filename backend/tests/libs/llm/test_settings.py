@@ -10,7 +10,7 @@ from tests.factories.llm import build_llm_model_settings
 
 
 @pytest.mark.parametrize(
-    ("reasoning_effort", "reasoning_efforts"),
+    ("reasoning_effort", "accepted_reasoning_efforts"),
     [
         pytest.param(None, frozenset({LlmReasoningEffortType.LOW}), id="none_is_always_accepted"),
         pytest.param(
@@ -22,10 +22,10 @@ from tests.factories.llm import build_llm_model_settings
 )
 def test_llm_model_settings_accepted_reasoning_effort_is_kept(
     reasoning_effort: LlmReasoningEffortType | None,
-    reasoning_efforts: frozenset[LlmReasoningEffortType],
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType],
 ) -> None:
     llm_model_settings = build_llm_model_settings(
-        reasoning_effort=reasoning_effort, reasoning_efforts=reasoning_efforts
+        reasoning_effort=reasoning_effort, accepted_reasoning_efforts=accepted_reasoning_efforts
     )
 
     assert llm_model_settings.reasoning_effort == reasoning_effort
@@ -35,7 +35,7 @@ def test_llm_model_settings_reasoning_effort_outside_accepted_set_raises_validat
     with pytest.raises(ValidationError):
         build_llm_model_settings(
             reasoning_effort=LlmReasoningEffortType.MAX,
-            reasoning_efforts=frozenset({LlmReasoningEffortType.LOW}),
+            accepted_reasoning_efforts=frozenset({LlmReasoningEffortType.LOW}),
         )
 
 

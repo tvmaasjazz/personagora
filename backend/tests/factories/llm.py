@@ -129,7 +129,9 @@ def build_llm_model_settings(
     max_output_tokens: int = 2048,
     request_timeout_seconds: int = 30,
     reasoning_effort: LlmReasoningEffortType | None = None,
-    reasoning_efforts: frozenset[LlmReasoningEffortType] = frozenset(LlmReasoningEffortType),
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = frozenset(
+        LlmReasoningEffortType
+    ),
     input_usd_per_million_tokens: Decimal = Decimal("2.00"),
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.50"),
     output_usd_per_million_tokens: Decimal = Decimal("8.00"),
@@ -140,7 +142,7 @@ def build_llm_model_settings(
         max_output_tokens=max_output_tokens,
         request_timeout_seconds=request_timeout_seconds,
         reasoning_effort=reasoning_effort,
-        reasoning_efforts=reasoning_efforts,
+        accepted_reasoning_efforts=accepted_reasoning_efforts,
         input_usd_per_million_tokens=input_usd_per_million_tokens,
         cached_input_usd_per_million_tokens=cached_input_usd_per_million_tokens,
         output_usd_per_million_tokens=output_usd_per_million_tokens,

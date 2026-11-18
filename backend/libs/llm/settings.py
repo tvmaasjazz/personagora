@@ -18,7 +18,7 @@ class LlmModelSettings(BaseModel):
     request_timeout_seconds: int
     # None omits it, so the model's own default applies
     reasoning_effort: LlmReasoningEffortType | None = None
-    reasoning_efforts: frozenset[LlmReasoningEffortType]
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType]
     input_usd_per_million_tokens: Decimal
     cached_input_usd_per_million_tokens: Decimal
     output_usd_per_million_tokens: Decimal
@@ -28,7 +28,7 @@ class LlmModelSettings(BaseModel):
         """Rejects a reasoning_effort the model doesn't accept."""
         if (
             self.reasoning_effort is not None
-            and self.reasoning_effort not in self.reasoning_efforts
+            and self.reasoning_effort not in self.accepted_reasoning_efforts
         ):
             raise ValueError(
                 f"reasoning_effort {self.reasoning_effort} is not accepted by {self.model_name}"
@@ -43,7 +43,7 @@ class Gpt54NanoLlmModelSettings(LlmModelSettings):
     max_output_tokens: int = 8192
     request_timeout_seconds: int = 30
     reasoning_effort: LlmReasoningEffortType | None = LlmReasoningEffortType.LOW
-    reasoning_efforts: frozenset[LlmReasoningEffortType] = frozenset(
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = frozenset(
         {
             LlmReasoningEffortType.NONE,
             LlmReasoningEffortType.LOW,
@@ -63,7 +63,7 @@ class Gpt56LunaLlmModelSettings(LlmModelSettings):
     max_output_tokens: int = 8192
     request_timeout_seconds: int = 120
     reasoning_effort: LlmReasoningEffortType | None = None
-    reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
     input_usd_per_million_tokens: Decimal = Decimal("0.20")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.02")
     output_usd_per_million_tokens: Decimal = Decimal("1.20")
@@ -75,7 +75,7 @@ class Gpt56TerraLlmModelSettings(LlmModelSettings):
     max_output_tokens: int = 8192
     request_timeout_seconds: int = 120
     reasoning_effort: LlmReasoningEffortType | None = None
-    reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
     input_usd_per_million_tokens: Decimal = Decimal("2.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.20")
     output_usd_per_million_tokens: Decimal = Decimal("12.00")
@@ -87,7 +87,7 @@ class Gpt56SolLlmModelSettings(LlmModelSettings):
     max_output_tokens: int = 4096
     request_timeout_seconds: int = 120
     reasoning_effort: LlmReasoningEffortType | None = None
-    reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
     input_usd_per_million_tokens: Decimal = Decimal("4.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.40")
     output_usd_per_million_tokens: Decimal = Decimal("20.00")
@@ -99,7 +99,7 @@ class Gpt6LunaLlmModelSettings(LlmModelSettings):
     max_output_tokens: int = 8192
     request_timeout_seconds: int = 120
     reasoning_effort: LlmReasoningEffortType | None = None
-    reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
     input_usd_per_million_tokens: Decimal = Decimal("0.10")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.01")
     output_usd_per_million_tokens: Decimal = Decimal("0.50")
@@ -111,7 +111,7 @@ class Gpt61TerraLlmModelSettings(LlmModelSettings):
     max_output_tokens: int = 8192
     request_timeout_seconds: int = 120
     reasoning_effort: LlmReasoningEffortType | None = None
-    reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = ALL_REASONING_EFFORTS
     input_usd_per_million_tokens: Decimal = Decimal("1.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.05")
     output_usd_per_million_tokens: Decimal = Decimal("5.00")
@@ -123,7 +123,7 @@ class Gpt62SolLlmModelSettings(LlmModelSettings):
     max_output_tokens: int = 8192
     request_timeout_seconds: int = 120
     reasoning_effort: LlmReasoningEffortType | None = None
-    reasoning_efforts: frozenset[LlmReasoningEffortType] = REASONING_EFFORTS_WITHOUT_NONE
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = REASONING_EFFORTS_WITHOUT_NONE
     input_usd_per_million_tokens: Decimal = Decimal("2.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.10")
     output_usd_per_million_tokens: Decimal = Decimal("10.00")
@@ -135,7 +135,7 @@ class Gpt62AstraLlmModelSettings(LlmModelSettings):
     max_output_tokens: int = 8192
     request_timeout_seconds: int = 120
     reasoning_effort: LlmReasoningEffortType | None = None
-    reasoning_efforts: frozenset[LlmReasoningEffortType] = REASONING_EFFORTS_WITHOUT_NONE
+    accepted_reasoning_efforts: frozenset[LlmReasoningEffortType] = REASONING_EFFORTS_WITHOUT_NONE
     input_usd_per_million_tokens: Decimal = Decimal("8.00")
     cached_input_usd_per_million_tokens: Decimal = Decimal("0.40")
     output_usd_per_million_tokens: Decimal = Decimal("40.00")
