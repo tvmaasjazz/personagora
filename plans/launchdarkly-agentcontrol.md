@@ -11,6 +11,9 @@ disagree, the source notes (`sdk-source-notes.md`) win.
 
 ## How generation works today
 
+As the plan was written: Level 0 has since replaced the tiers below with a model per step
+and tier.
+
 ### The graph
 
 `libs/generate_text/graphs/blog_post/graph_builder.py` builds one LangGraph `StateGraph`
@@ -212,8 +215,9 @@ and its prices.
   | `GPT_6_2_ASTRA` | `gpt-6.2-astra` | 8.00 | 0.40 | 40.00 |
 
 - **Reasoning efforts:** `LlmReasoningEffortType` gains `NONE`, `XHIGH` and `MAX`, which
-  the newer models take and the OpenAI SDK already accepts. Not every model takes every
-  effort (the 6.2 models have no `none`), so each definition lists the efforts its model
+  the newer models take and the OpenAI SDK already accepts, and loses `MINIMAL`, which
+  none of them take. Not every model takes every effort (the 6.2 models have no `none`,
+  and `gpt-5.4-nano` has no `max`), so each definition lists the efforts its model
   accepts. Level 1 falls back when a variation serves one its model doesn't take,
   instead of sending OpenAI a request it rejects.
 - `LlmTierSettings` becomes `LlmModelSettings`.
@@ -226,9 +230,10 @@ generate_text.blog_post.draft.standard    = GPT_5_6_SOL
 generate_text.blog_post.humanize.standard = GPT_5_6_SOL
 ```
 
-- **The tier is `GenerateTextStepTierType`** in `libs/generate_text/types.py`, with one
-  member, `STANDARD`. The builder always picks it until a second tier exists, which is
-  when a user gets to choose (Level 2 › *Tiers a user picks*).
+- **The tier is the field name, `standard`.** The builder always picks it until a second
+  tier exists, which is when a user gets to choose (Level 2 › *Tiers a user picks*). The
+  `GenerateTextStepTierType` enum comes with Level 1, the first code that maps a step and
+  tier to something (its config key).
 - **One small class per step,** since each step's default differs. An env var overrides
   one step and tier: `GENERATE_TEXT__BLOG_POST__DRAFT__STANDARD=GPT_5_4_NANO`.
 - **The graph builder reads these** in place of hard-coding `LlmType.FAST` and
@@ -239,9 +244,11 @@ generate_text.blog_post.humanize.standard = GPT_5_6_SOL
 
 **Also in this PR:**
 
-- **`psg_llm_call.llm_type` and the `psg_llm_type` enum are dropped.** The row already
+- **`psg_llm_call.llm_type` stops being written, and becomes nullable.** The row already
   holds `provider` and `model_name`, and a Postgres enum of models would need a migration
-  for every model added.
+  for every model added. It isn't dropped yet: Railway migrates before the old replicas
+  stop, and their code still inserts it. Level 1's schema step drops the column and the
+  `psg_llm_type` enum.
 - **The dev LLM endpoint is removed** (`apps/api/domains/dev_llm/`, its tests, and its
   entries in `app_factory.py` and `test_app_factory.py`). It was for trying models early
   on, and nothing calls it.
@@ -344,15 +351,27 @@ as it does today.
    carry persona text and briefs, and `psg_llm_call` already holds them. LaunchDarkly also
    becomes the app's observability backend, covered under Observability below.
 
-**Which SDK:** start with the current `launchdarkly-ai-server`, through `inspect_config`
-plus a custom handler, with our wrapper supplying the fallback it lacks. Before building on
-it, run a short spike on 3.14: install it, read a config, run one tracked call, and check
-the event lands in Monitoring. If it fails on 3.14, use the legacy `ldai` instead. It
-fits this design just as well (a default, a tracker), but it's in maintenance mode. The
-service in item 1 keeps the choice behind one class either way.
+**Which SDK:** the current `launchdarkly-ai-server` (1.1.0), through `inspect_config` plus
+a custom handler run with `execute_and_track`, with our wrapper supplying the fallback it
+lacks. The spike (2026-11-18, against `development`) checked on 3.14:
 
-**New dependencies** (to approve): `launchdarkly-server-sdk` and `launchdarkly-ai-server`
-(or `launchdarkly-server-sdk-ai`). The OpenTelemetry packages come later, with Phase 2.
+- The base client initialized in under a second and was adopted with
+  `init_client(client=...)`.
+- `inspect_config` returns the model (`name`, freeform `parameters`), the provider
+  (`OpenAI`), the messages, and `meta` with `variationKey`, `version` and `modelKey`. A
+  missing or disabled config returns `enabled: False` and never raises.
+- `execute_and_track` with our own handler reports duration, tokens and success; when the
+  handler raises it reports an error and re-raises. Both reached the config's metrics
+  (`/ai-configs/{key}/metrics`) within minutes.
+- **LaunchDarkly showed zero cost** for those events, though the variation pointed at a
+  catalog model with prices. `psg_llm_call` is the billing record anyway; check the
+  dashboard's cost charts once real calls flow.
+- **`init_client` registers a global OpenTelemetry tracer provider** when the
+  OpenTelemetry SDK is installed (it isn't yet). The Observability work has to make it
+  and the `ldobserve` plugin agree on one provider.
+
+**Dependencies:** `launchdarkly-server-sdk` and `launchdarkly-ai-server`. The OpenTelemetry
+packages come later, with Phase 2.
 
 **One client per process:** build the base `ldclient` ourselves in `lifespan.py`, and
 hand it to the AI SDK with `init_client(client=...)`. Feature flags and AgentControl
@@ -623,15 +642,9 @@ the API.
 
 1. **This plan.**
 2. **Level 0.**
-3. **The spike.**
-   - Install the current SDK, `launchdarkly-ai-server`, on 3.14.
-   - Create `blog-post-draft-standard` by hand in the `development` environment, with
-     today's model and system prompt.
-   - A throwaway script reads it and runs one tracked call through a custom handler.
-   - Check the event lands in Monitoring, and that configs and variations are
-     project-wide with only targeting per environment, as the seed script assumes.
-   - Pick the SDK: the current one if it works on 3.14, else the legacy `ldai`. Add the
-     dependencies, then run `uv lock`.
+3. **The spike,** done: the dependencies only, with its results under Level 1 › *Which
+   SDK*. It ran on a throwaway config, since the seed script is create-only and a real
+   key made by hand would keep the hand-made prompt.
 4. **Level 1,** in the order below.
 5. **Staging.**
    - Seed the `staging` environment.
@@ -644,7 +657,8 @@ the API.
 
 **Level 1, in order:**
 
-1. **The schema:** the three `psg_llm_call` columns (`schema-coder`).
+1. **The schema** (`schema-coder`): the three `psg_llm_call` columns, and dropping
+   `llm_type` and the `psg_llm_type` enum, which Level 0 left nullable.
 2. **The placement review.** Tyler reviews this list before any coder starts:
    - `libs/llm/services/llm_config_service.py`: `LlmConfigService`. It resolves a config
      key into the model settings and rendered system prompt, falling back to the code
@@ -674,8 +688,12 @@ the API.
      The dashboard then starts from exactly what the code would send, and switching on
      changes nothing.
    - **Run per environment** (`--environment staging`). It creates each config and its
-     variation if they're missing, then turns targeting on in that environment, serving
-     the seed variation to everyone.
+     variation if they're missing, then sets that environment's default rule to serve
+     the seed variation to everyone. A new config is already enabled, so there's nothing
+     to turn on.
+   - **A variation names its model by catalog key,** `OpenAI.<model ID>`
+     (`modelConfigKey`). All eight of our models are in LaunchDarkly's catalog with
+     prices, except cached input.
    - **Create-only.** It never changes a config or variation that exists, so an edit
      made in the dashboard survives a rerun, as `preserve()` does in `railway.ts`. Once
      seeded, the content belongs to LaunchDarkly.
