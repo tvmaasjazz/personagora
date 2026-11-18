@@ -107,6 +107,21 @@ Each model's definition, including its output limit, timeout and prices, is in
 `LLM__GPT_5_6_SOL__MAX_OUTPUT_TOKENS`. A run's cost comes from those prices, so only a
 model defined there can run.
 
+These are the defaults. With LaunchDarkly on, each step's model, its parameters and
+its system prompt come from that step's LaunchDarkly config instead, and the default
+is used whenever LaunchDarkly serves nothing usable. To use it locally, put the
+`development` environment's SDK key in `.env`:
+
+```bash
+LAUNCHDARKLY__IS_ENABLED=true
+LAUNCHDARKLY_SDK_KEY=<development SDK key>
+```
+
+`uv run python -m scripts.llm_config_check` (from `backend/`) prints what each step
+resolves to. Each running process counts against the free plan's five monthly
+service connections (`plans/launchdarkly-agentcontrol.md` › Free plan budget), so
+leave LaunchDarkly off when you don't need it.
+
 ### 2. Start Postgres and Redis
 
 ```bash

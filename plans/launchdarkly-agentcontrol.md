@@ -691,6 +691,13 @@ the API.
      variation if they're missing, then sets that environment's default rule to serve
      the seed variation to everyone. A new config is already enabled, so there's nothing
      to turn on.
+     - **What the first seed showed (`development`, 2026-11-18):**
+       - LaunchDarkly gives each config a built-in `disabled` variation, which is the off
+         variation.
+       - It points every environment's fallthrough at the first variation added, with
+         targeting on. So on a fresh config the fallthrough step only reports what's
+         served.
+       - A config created a moment ago is served as disabled for up to a minute.
    - **A variation names its model by catalog key,** `OpenAI.<model ID>`
      (`modelConfigKey`). All eight of our models are in LaunchDarkly's catalog with
      prices, except cached input.
