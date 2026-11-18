@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from libs.llm.constants import LLM_EXCEPTION_BY_REASON, LLM_STATUS_BY_REASON
 from libs.llm.exceptions import LlmException
-from libs.llm.settings import LlmSettings
+from libs.llm.settings import LlmModelSettings
 from libs.llm.types import LlmCallReasonType, LlmCallStatusType
 
 
@@ -29,19 +29,16 @@ class LlmUtils:
 
     @staticmethod
     def compute_cost(
-        llm_settings: LlmSettings,
-        model_name: str,
+        model_settings: LlmModelSettings,
         input_tokens: int,
         output_tokens: int,
         cached_input_tokens: int,
     ) -> Decimal:
-        """The call's cost in USD; LlmSettings refuses to load without a price for every tier's
-        model."""
-        model_pricing = llm_settings.model_pricing[model_name]
+        """The call's cost in USD, priced from the model's own settings."""
         billed_input_tokens = input_tokens - cached_input_tokens
         million_tokens = Decimal(1_000_000)
         return (
-            billed_input_tokens * model_pricing.input_usd_per_million_tokens
-            + cached_input_tokens * model_pricing.cached_input_usd_per_million_tokens
-            + output_tokens * model_pricing.output_usd_per_million_tokens
+            billed_input_tokens * model_settings.input_usd_per_million_tokens
+            + cached_input_tokens * model_settings.cached_input_usd_per_million_tokens
+            + output_tokens * model_settings.output_usd_per_million_tokens
         ) / million_tokens

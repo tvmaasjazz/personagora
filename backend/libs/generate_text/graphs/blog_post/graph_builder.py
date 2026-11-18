@@ -18,7 +18,6 @@ from libs.generate_text.graphs.blog_post.prompts import (
 )
 from libs.generate_text.states import GenerateTextState
 from libs.generate_text.types import GenerateTextNodeType, HumanDecisionType
-from libs.llm.types import LlmType
 
 
 class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
@@ -40,6 +39,11 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
             raise GenerateTextOptionsInvalidException(
                 "These options are not valid for a blog post"
             ) from validation_error
+
+        # Every step runs its standard tier until users can pick one
+        outline_llm_type = self._generate_text_settings.blog_post.outline.standard
+        draft_llm_type = self._generate_text_settings.blog_post.draft.standard
+        humanize_llm_type = self._generate_text_settings.blog_post.humanize.standard
 
         # Prompts, output format and enabled steps
         outline_prompt = BlogPostOutlinePrompt()
@@ -68,7 +72,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
         # Outline: optional first pass at the post's shape
         if outline_options is not None and outline_options.is_enabled:
             outline_node = self._node_service.build_generate_node(
-                GenerateTextNodeType.GENERATE_OUTLINE, LlmType.FAST, outline_prompt
+                GenerateTextNodeType.GENERATE_OUTLINE, outline_llm_type, outline_prompt
             )
             state_graph.add_node(
                 GenerateTextNodeType.GENERATE_OUTLINE,
@@ -89,10 +93,10 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
                         GenerateTextNodeType.REVIEW_OUTLINE, review_outline_node
                     ),
                 )
-                # A rewrite is its own node so it can use its own LLM tier
+                # A rewrite is its own node so it can use its own model
                 rewrite_outline_node = self._node_service.build_rewrite_node(
                     GenerateTextNodeType.REWRITE_OUTLINE,
-                    LlmType.FAST,
+                    outline_llm_type,
                     GenerateTextNodeType.REVIEW_OUTLINE,
                     outline_prompt,
                 )
@@ -125,7 +129,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
         # Draft: always runs
         draft_node = self._node_service.build_generate_node(
             GenerateTextNodeType.GENERATE_DRAFT,
-            LlmType.STRONG,
+            draft_llm_type,
             draft_prompt,
             blog_post_body_output_format,
         )
@@ -150,7 +154,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
             )
             rewrite_draft_node = self._node_service.build_rewrite_node(
                 GenerateTextNodeType.REWRITE_DRAFT,
-                LlmType.STRONG,
+                draft_llm_type,
                 GenerateTextNodeType.REVIEW_DRAFT,
                 draft_prompt,
                 blog_post_body_output_format,
@@ -185,7 +189,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
         if humanize_options is not None and humanize_options.is_enabled:
             humanize_node = self._node_service.build_generate_node(
                 GenerateTextNodeType.HUMANIZE,
-                LlmType.STRONG,
+                humanize_llm_type,
                 humanize_prompt,
                 blog_post_body_output_format,
             )
@@ -210,7 +214,7 @@ class BlogPostGraphBuilder(BaseGenerateTextGraphBuilder):
                 )
                 rewrite_humanize_node = self._node_service.build_rewrite_node(
                     GenerateTextNodeType.REWRITE_HUMANIZE,
-                    LlmType.STRONG,
+                    humanize_llm_type,
                     GenerateTextNodeType.REVIEW_HUMANIZE,
                     humanize_prompt,
                     blog_post_body_output_format,

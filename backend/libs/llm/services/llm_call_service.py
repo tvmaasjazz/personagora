@@ -12,7 +12,7 @@ from libs.database.utils import DatabaseResultUtils
 from libs.llm.exceptions import LlmException
 from libs.llm.inputs import LlmCompletionInput
 from libs.llm.results import CreatePendingLlmCallResult, LlmProviderCompletionResult
-from libs.llm.settings import LlmTierSettings
+from libs.llm.settings import LlmModelSettings
 from libs.llm.types import LlmCallReasonType, LlmCallStatusType
 from libs.llm.utils import LlmUtils
 
@@ -28,7 +28,7 @@ class LlmCallService:
     async def create_pending_llm_call(
         self,
         llm_completion_input: LlmCompletionInput,
-        tier_settings: LlmTierSettings,
+        model_settings: LlmModelSettings,
         auth_user: AuthUser,
     ) -> CreatePendingLlmCallResult:
         """Commits a PENDING call row before the provider is asked, so a crash leaves a trace."""
@@ -37,9 +37,8 @@ class LlmCallService:
             llm_call_insert = (
                 insert(LlmCallOrm)
                 .values(
-                    llm_type=llm_completion_input.llm_type,
-                    provider=tier_settings.provider,
-                    model_name=tier_settings.model_name,
+                    provider=model_settings.provider,
+                    model_name=model_settings.model_name,
                     purpose=llm_completion_input.purpose,
                     system_prompt=llm_completion_input.system_prompt,
                     user_prompt=llm_completion_input.user_prompt,
