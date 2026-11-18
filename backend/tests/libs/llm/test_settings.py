@@ -1,52 +1,60 @@
-from decimal import Decimal
-from typing import Any
-
 import pytest
 from pydantic import ValidationError
 
 from libs.llm.settings import (
-    FastLlmTierSettings,
-    LlmModelPricingSettings,
-    LlmSettings,
-    StrongLlmTierSettings,
-    ThinkingLlmTierSettings,
+    Gpt62AstraLlmModelSettings,
+    Gpt62SolLlmModelSettings,
 )
-
-
-def test_llm_settings_every_tier_model_priced_is_accepted() -> None:
-    llm_settings = LlmSettings(
-        fast=FastLlmTierSettings(model_name="priced-fast-model"),
-        strong=StrongLlmTierSettings(model_name="priced-strong-model"),
-        thinking=ThinkingLlmTierSettings(model_name="priced-thinking-model"),
-        model_pricing={
-            model_name: LlmModelPricingSettings(
-                input_usd_per_million_tokens=Decimal("1.00"),
-                cached_input_usd_per_million_tokens=Decimal("0.10"),
-                output_usd_per_million_tokens=Decimal("4.00"),
-            )
-            for model_name in [
-                "priced-fast-model",
-                "priced-strong-model",
-                "priced-thinking-model",
-            ]
-        },
-    )
-
-    assert llm_settings.fast.model_name == "priced-fast-model"
+from libs.llm.types import LlmReasoningEffortType
+from tests.factories.llm import build_llm_model_settings
 
 
 @pytest.mark.parametrize(
-    "unpriced_tier_settings",
+    ("reasoning_effort", "reasoning_efforts"),
     [
-        pytest.param({"fast": FastLlmTierSettings(model_name="unpriced-model")}, id="fast"),
-        pytest.param({"strong": StrongLlmTierSettings(model_name="unpriced-model")}, id="strong"),
+        pytest.param(None, frozenset({LlmReasoningEffortType.LOW}), id="none_is_always_accepted"),
         pytest.param(
-            {"thinking": ThinkingLlmTierSettings(model_name="unpriced-model")}, id="thinking"
+            LlmReasoningEffortType.LOW,
+            frozenset({LlmReasoningEffortType.LOW, LlmReasoningEffortType.HIGH}),
+            id="effort_in_accepted_set",
         ),
     ],
 )
-def test_llm_settings_tier_model_without_pricing_raises_validation_error(
-    unpriced_tier_settings: dict[str, Any],
+def test_llm_model_settings_accepted_reasoning_effort_is_kept(
+    reasoning_effort: LlmReasoningEffortType | None,
+    reasoning_efforts: frozenset[LlmReasoningEffortType],
+) -> None:
+    llm_model_settings = build_llm_model_settings(
+        reasoning_effort=reasoning_effort, reasoning_efforts=reasoning_efforts
+    )
+
+    assert llm_model_settings.reasoning_effort == reasoning_effort
+
+
+def test_llm_model_settings_reasoning_effort_outside_accepted_set_raises_validation_error() -> None:
+    with pytest.raises(ValidationError):
+        build_llm_model_settings(
+            reasoning_effort=LlmReasoningEffortType.MAX,
+            reasoning_efforts=frozenset({LlmReasoningEffortType.LOW}),
+        )
+
+
+@pytest.mark.parametrize(
+    "model_settings_class", [Gpt62SolLlmModelSettings, Gpt62AstraLlmModelSettings]
+)
+def test_gpt_6_2_model_settings_none_reasoning_effort_raises_validation_error(
+    model_settings_class: type[Gpt62SolLlmModelSettings | Gpt62AstraLlmModelSettings],
 ) -> None:
     with pytest.raises(ValidationError):
-        LlmSettings(**unpriced_tier_settings)
+        model_settings_class(reasoning_effort=LlmReasoningEffortType.NONE)
+
+
+@pytest.mark.parametrize(
+    "model_settings_class", [Gpt62SolLlmModelSettings, Gpt62AstraLlmModelSettings]
+)
+def test_gpt_6_2_model_settings_low_reasoning_effort_is_accepted(
+    model_settings_class: type[Gpt62SolLlmModelSettings | Gpt62AstraLlmModelSettings],
+) -> None:
+    llm_model_settings = model_settings_class(reasoning_effort=LlmReasoningEffortType.LOW)
+
+    assert llm_model_settings.reasoning_effort == LlmReasoningEffortType.LOW

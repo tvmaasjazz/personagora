@@ -10,10 +10,13 @@ from libs.core.exceptions import NotFoundException
 from libs.database.orm.llm_call import LlmCallOrm
 from libs.llm.exceptions import LlmUnavailableException
 from libs.llm.services.llm_call_service import LlmCallService
-from libs.llm.settings import LlmTierSettings
-from libs.llm.types import LlmCallReasonType, LlmCallStatusType, LlmProviderType, LlmType
+from libs.llm.types import LlmCallReasonType, LlmCallStatusType, LlmProviderType
 from tests.factories.auth import build_auth_user
-from tests.factories.llm import build_llm_completion_input, build_llm_provider_completion_result
+from tests.factories.llm import (
+    build_llm_completion_input,
+    build_llm_model_settings,
+    build_llm_provider_completion_result,
+)
 from tests.factories.users import insert_user_row
 
 
@@ -29,15 +32,12 @@ async def test_create_pending_llm_call_persists_pending_row_with_null_metrics(
     auth_user = await _insert_auth_user(db_session)
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
     llm_completion_input = build_llm_completion_input(purpose="pending-purpose")
-    tier_settings = LlmTierSettings(
-        provider=LlmProviderType.OPENAI,
-        model_name="test-model",
-        max_output_tokens=2048,
-        request_timeout_seconds=30,
+    model_settings = build_llm_model_settings(
+        provider=LlmProviderType.ANTHROPIC, model_name="claude-test-model"
     )
 
     create_pending_llm_call_result = await llm_call_service.create_pending_llm_call(
-        llm_completion_input, tier_settings, auth_user
+        llm_completion_input, model_settings, auth_user
     )
 
     llm_call_query = select(LlmCallOrm).where(
@@ -47,9 +47,8 @@ async def test_create_pending_llm_call_persists_pending_row_with_null_metrics(
     assert llm_call_record is not None
     assert llm_call_record.id == create_pending_llm_call_result.llm_call_id
     assert llm_call_record.status == LlmCallStatusType.PENDING
-    assert llm_call_record.llm_type == LlmType.FAST
-    assert llm_call_record.provider == LlmProviderType.OPENAI
-    assert llm_call_record.model_name == "test-model"
+    assert llm_call_record.provider == LlmProviderType.ANTHROPIC
+    assert llm_call_record.model_name == "claude-test-model"
     assert llm_call_record.purpose == "pending-purpose"
     assert llm_call_record.input_tokens is None
     assert llm_call_record.output_tokens is None
@@ -68,14 +67,9 @@ async def test_complete_llm_call_updates_row_with_result_and_cost(
     auth_user = await _insert_auth_user(db_session)
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
     llm_completion_input = build_llm_completion_input(purpose="complete-purpose")
-    tier_settings = LlmTierSettings(
-        provider=LlmProviderType.OPENAI,
-        model_name="test-model",
-        max_output_tokens=2048,
-        request_timeout_seconds=30,
-    )
+    model_settings = build_llm_model_settings()
     create_pending_llm_call_result = await llm_call_service.create_pending_llm_call(
-        llm_completion_input, tier_settings, auth_user
+        llm_completion_input, model_settings, auth_user
     )
     provider_completion_result = build_llm_provider_completion_result(
         content="Hello there.",
@@ -133,14 +127,9 @@ async def test_fail_llm_call_llm_exception_writes_reason_and_provider_message(
     auth_user = await _insert_auth_user(db_session)
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
     llm_completion_input = build_llm_completion_input(purpose="fail-purpose")
-    tier_settings = LlmTierSettings(
-        provider=LlmProviderType.OPENAI,
-        model_name="test-model",
-        max_output_tokens=2048,
-        request_timeout_seconds=30,
-    )
+    model_settings = build_llm_model_settings()
     create_pending_llm_call_result = await llm_call_service.create_pending_llm_call(
-        llm_completion_input, tier_settings, auth_user
+        llm_completion_input, model_settings, auth_user
     )
     llm_provider_exception = LlmUnavailableException(
         "The LLM provider is unavailable", provider_message="upstream said no capacity"
@@ -172,14 +161,9 @@ async def test_fail_llm_call_non_llm_exception_records_provider_error_reason_no_
     auth_user = await _insert_auth_user(db_session)
     llm_call_service = LlmCallService(db_session_factory=db_session_factory)
     llm_completion_input = build_llm_completion_input(purpose="generic-fail-purpose")
-    tier_settings = LlmTierSettings(
-        provider=LlmProviderType.OPENAI,
-        model_name="test-model",
-        max_output_tokens=2048,
-        request_timeout_seconds=30,
-    )
+    model_settings = build_llm_model_settings()
     create_pending_llm_call_result = await llm_call_service.create_pending_llm_call(
-        llm_completion_input, tier_settings, auth_user
+        llm_completion_input, model_settings, auth_user
     )
 
     await llm_call_service.fail_llm_call(

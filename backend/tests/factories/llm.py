@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from libs.database.orm.llm_call import LlmCallOrm
 from libs.llm.inputs import LlmCompletionInput, LlmProviderCompletionInput
 from libs.llm.results import LlmCompletionResult, LlmProviderCompletionResult
-from libs.llm.settings import LlmModelPricingSettings, LlmSettings
+from libs.llm.settings import LlmModelSettings
 from libs.llm.types import (
     LlmCallReasonType,
     LlmCallStatusType,
@@ -19,7 +19,7 @@ from libs.llm.types import (
 
 def build_llm_completion_input(
     *,
-    llm_type: LlmType = LlmType.FAST,
+    llm_type: LlmType = LlmType.GPT_5_4_NANO,
     purpose: str = "test_purpose",
     system_prompt: str | None = "You are a helpful assistant.",
     user_prompt: str = "Say hello.",
@@ -94,7 +94,6 @@ async def insert_llm_call_row(
     created_by_id: int,
     run_id: int | None = None,
     step_id: int | None = None,
-    llm_type: LlmType = LlmType.FAST,
     provider: LlmProviderType = LlmProviderType.OPENAI,
     model_name: str = "test-model",
     purpose: str = "test_purpose",
@@ -104,7 +103,6 @@ async def insert_llm_call_row(
     cost_usd: Decimal | None = Decimal("0.01"),
 ) -> LlmCallOrm:
     llm_call_record = LlmCallOrm(
-        llm_type=llm_type,
         provider=provider,
         model_name=model_name,
         purpose=purpose,
@@ -124,17 +122,26 @@ async def insert_llm_call_row(
     return llm_call_record
 
 
-def build_llm_model_pricing_by_model_name(
-    *, extra_model_names: list[str] | None = None
-) -> dict[str, LlmModelPricingSettings]:
-    """The default pricing map plus a priced entry for each extra model name, since every
-    tier's model must be priced."""
-    extra_model_pricing_by_model_name = {
-        extra_model_name: LlmModelPricingSettings(
-            input_usd_per_million_tokens=Decimal("2.00"),
-            cached_input_usd_per_million_tokens=Decimal("0.50"),
-            output_usd_per_million_tokens=Decimal("8.00"),
-        )
-        for extra_model_name in extra_model_names or []
-    }
-    return {**LlmSettings().model_pricing, **extra_model_pricing_by_model_name}
+def build_llm_model_settings(
+    *,
+    provider: LlmProviderType = LlmProviderType.OPENAI,
+    model_name: str = "test-model",
+    max_output_tokens: int = 2048,
+    request_timeout_seconds: int = 30,
+    reasoning_effort: LlmReasoningEffortType | None = None,
+    reasoning_efforts: frozenset[LlmReasoningEffortType] = frozenset(LlmReasoningEffortType),
+    input_usd_per_million_tokens: Decimal = Decimal("2.00"),
+    cached_input_usd_per_million_tokens: Decimal = Decimal("0.50"),
+    output_usd_per_million_tokens: Decimal = Decimal("8.00"),
+) -> LlmModelSettings:
+    return LlmModelSettings(
+        provider=provider,
+        model_name=model_name,
+        max_output_tokens=max_output_tokens,
+        request_timeout_seconds=request_timeout_seconds,
+        reasoning_effort=reasoning_effort,
+        reasoning_efforts=reasoning_efforts,
+        input_usd_per_million_tokens=input_usd_per_million_tokens,
+        cached_input_usd_per_million_tokens=cached_input_usd_per_million_tokens,
+        output_usd_per_million_tokens=output_usd_per_million_tokens,
+    )

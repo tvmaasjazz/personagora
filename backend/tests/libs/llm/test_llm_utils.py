@@ -3,10 +3,9 @@ from decimal import Decimal
 import pytest
 
 from libs.llm.constants import LLM_EXCEPTION_BY_REASON, LLM_STATUS_BY_REASON
-from libs.llm.settings import FastLlmTierSettings, LlmSettings
-from libs.llm.types import LlmCallReasonType, LlmCallStatusType, LlmProviderType
+from libs.llm.types import LlmCallReasonType, LlmCallStatusType
 from libs.llm.utils import LlmUtils
-from tests.factories.llm import build_llm_model_pricing_by_model_name
+from tests.factories.llm import build_llm_model_settings
 
 
 def test_resolve_status_no_reason_returns_succeeded() -> None:
@@ -31,22 +30,28 @@ def test_build_reason_exception_every_reason_has_an_exception(reason: LlmCallRea
 
 
 def test_compute_cost_bills_cached_input_tokens_at_the_cached_rate() -> None:
-    llm_settings = LlmSettings(
-        fast=FastLlmTierSettings(
-            provider=LlmProviderType.OPENAI,
-            model_name="test-model",
-            max_output_tokens=2048,
-            request_timeout_seconds=30,
-        ),
-        model_pricing=build_llm_model_pricing_by_model_name(extra_model_names=["test-model"]),
+    model_settings = build_llm_model_settings(
+        input_usd_per_million_tokens=Decimal("2.00"),
+        cached_input_usd_per_million_tokens=Decimal("0.50"),
+        output_usd_per_million_tokens=Decimal("8.00"),
     )
 
     cost_usd = LlmUtils.compute_cost(
-        llm_settings,
-        "test-model",
-        input_tokens=1000,
-        output_tokens=500,
-        cached_input_tokens=200,
+        model_settings, input_tokens=1000, output_tokens=500, cached_input_tokens=200
     )
 
     assert cost_usd == Decimal("0.005700")
+
+
+def test_compute_cost_uses_the_models_own_prices() -> None:
+    model_settings = build_llm_model_settings(
+        input_usd_per_million_tokens=Decimal("10.00"),
+        cached_input_usd_per_million_tokens=Decimal("1.00"),
+        output_usd_per_million_tokens=Decimal("30.00"),
+    )
+
+    cost_usd = LlmUtils.compute_cost(
+        model_settings, input_tokens=1000, output_tokens=500, cached_input_tokens=200
+    )
+
+    assert cost_usd == Decimal("0.0232")

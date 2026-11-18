@@ -337,7 +337,7 @@ async def test_complete_structured_retryable_status_then_success_returns_parsed_
     ("reasoning_effort", "expected_reasoning"),
     [
         pytest.param(LlmReasoningEffortType.LOW, {"effort": "low"}, id="low"),
-        pytest.param(LlmReasoningEffortType.MINIMAL, {"effort": "minimal"}, id="minimal"),
+        pytest.param(LlmReasoningEffortType.NONE, {"effort": "none"}, id="none"),
         pytest.param(LlmReasoningEffortType.HIGH, {"effort": "high"}, id="high"),
     ],
 )
